@@ -7,4 +7,10 @@
     <!-- Folder where production build objects will be placed -->
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\infinitictactoe.client\browser\</BuildOutputFolder>
   </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="src\game\" />
+    <Folder Include="src\board\" />
+    <Folder Include="src\cell\" />
+    <Folder Include="src\chat\" />
+  </ItemGroup>
 </Project>

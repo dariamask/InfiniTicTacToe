@@ -1,0 +1,5 @@
+<div class="board">
+  <div *ngFor="let row of board; let rowIndex = index" class="row">
+    <app-cell *ngFor="let cell of row; let colIndex = index" [value]="cell" [row]="rowIndex" [col]="colIndex"></app-cell>
+  </div>
+</div>
