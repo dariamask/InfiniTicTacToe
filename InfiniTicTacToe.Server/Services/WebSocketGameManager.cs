@@ -2,16 +2,25 @@ using System.Collections.Concurrent;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
-public class WebSocketManager
+namespace InfiniTicTacToe.Server.Services;
+
+public sealed record WebsocketMessageEventArgs(string Message, string SocketId);
+
+public sealed record WebsocketConnectionEventArgs(string SocketId);
+
+public class WebSocketGameManager : IWebSocketGameManager
 {
-    private readonly ConcurrentDictionary<string, WebSocket> _sockets = new ConcurrentDictionary<string, WebSocket>();
+    private readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
+
+    public event EventHandler<WebsocketMessageEventArgs>? MessageReceived;
+
+    public event EventHandler<WebsocketConnectionEventArgs>? ConnectionReceived;
 
     public void AddSocket(string id, WebSocket socket)
     {
         _sockets.TryAdd(id, socket);
+        ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
     }
 
     public async Task RemoveSocket(string id)
@@ -32,13 +41,12 @@ public class WebSocketManager
         }
     }
 
-    public async Task ReceiveMessagesAsync(string id, WebSocket socket)
+    public async Task ReceiveMessagesAsync(string id, WebSocket socket, CancellationToken cancellationToken)
     {
-        //cancellation token
         var buffer = new byte[1024 * 4];
-        while (socket.State == WebSocketState.Open)
+        while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
-            var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancellationToken.None);
+            var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
             if (result.MessageType == WebSocketMessageType.Close)
             {
                 await RemoveSocket(id);
@@ -46,14 +54,14 @@ public class WebSocketManager
             else
             {
                 var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                foreach(var sct in _sockets.Values) 
-                {
-                    if (sct != socket) {
-                        await sct.SendAsync(new ArraySegment<byte>(buffer, 0, result.Count), result.MessageType, result.EndOfMessage, CancellationToken.None);
-                    }
-                }
-                // Handle the received message
+
+                OnMessageReceived(message, id);
             }
         }
+    }
+
+    protected virtual void OnMessageReceived(string message, string socketId)
+    {
+        MessageReceived?.Invoke(this, new(message, socketId));
     }
 }

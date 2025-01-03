@@ -1,3 +1,5 @@
+using InfiniTicTacToe.Server.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -6,9 +8,12 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<WebSocketManager>();
+builder.Services.AddSingleton<IWebSocketGameManager, WebSocketGameManager>();
+builder.Services.AddSingleton<GameService>();
 
 var app = builder.Build();
+
+_ = app.Services.GetRequiredService<GameService>();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();
@@ -36,11 +41,19 @@ app.Map("/ws", async context =>
         context.Response.StatusCode = 400;
         return;
     }
-    var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-    var webSocketManager = context.RequestServices.GetRequiredService<WebSocketManager>();
-    var socketId = Guid.NewGuid().ToString();
-    webSocketManager.AddSocket(socketId, webSocket);
-    await webSocketManager.ReceiveMessagesAsync(socketId, webSocket);
+    try
+    {
+        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketGameManager>();
+        var socketId = Guid.NewGuid().ToString();
+        webSocketManager.AddSocket(socketId, webSocket);
+        await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, CancellationToken.None);
+    }
+    catch (Exception)
+    {
+
+        throw;
+    }
 });
 
 
