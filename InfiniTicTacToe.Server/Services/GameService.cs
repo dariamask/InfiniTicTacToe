@@ -5,10 +5,13 @@ namespace InfiniTicTacToe.Server.Services;
 
 public sealed class GameService : IDisposable
 {
+    private const int MaxX = 100;
+    private const int MaxY = 100;
+
     private readonly IWebSocketGameManager _webSocketManager;
     private readonly ILogger<GameService> _logger;
     private readonly ConcurrentDictionary<string, Player> _players = new();
-    private readonly char[,] _board = new char[100, 100];
+    private readonly char[,] _board = new char[MaxX, MaxY];
     private readonly HashSet<(int, int)> _usedPositions = [];
 
     private string? _currentPlayerId;
@@ -119,6 +122,11 @@ public sealed class GameService : IDisposable
             return (false, "It's not your turn.");
         }
 
+        if (!IsValidPosition(x, y))
+        {
+            return (false, "Move out of bounds.");
+        }
+
         if (_usedPositions.Contains((x, y)))
         {
             return (false, "Position already used.");
@@ -184,7 +192,7 @@ public sealed class GameService : IDisposable
         return count >= 5;
     }
 
-    private static bool IsValidPosition(int x, int y) => x >= 0 && y >= 0 && x < 100 && y < 100;
+    private static bool IsValidPosition(int x, int y) => x >= 0 && y >= 0 && x < MaxX && y < MaxY;
 
     private sealed record Player(string Id, char Symbol);
 }
