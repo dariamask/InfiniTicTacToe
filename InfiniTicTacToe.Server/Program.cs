@@ -44,10 +44,12 @@ app.Map("/ws", async context =>
     try
     {
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+        var socketFinishedTcs = new TaskCompletionSource<object>();
+
         var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketGameManager>();
         var socketId = Guid.NewGuid().ToString();
-        webSocketManager.AddSocket(socketId, webSocket);
-        await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, CancellationToken.None);
+        await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, socketFinishedTcs, CancellationToken.None);
+        await socketFinishedTcs.Task;
     }
     catch (Exception)
     {
