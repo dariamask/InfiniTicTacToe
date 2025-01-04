@@ -1,6 +1,8 @@
 <div class="player-list">
   <h3>Players</h3>
   <ul>
-    <li *ngFor="let player of players">{{ player }}</li>
+    @for (player of players; track player) {
+    <li>{{ player }}</li>
+    }
   </ul>
 </div>

@@ -1,5 +1,14 @@
 <div class="board">
-  <div *ngFor="let row of board; let rowIndex = index" class="row">
-    <app-cell *ngFor="let cell of row; let colIndex = index" [value]="cell" [row]="rowIndex" [col]="colIndex"></app-cell>
+  @for (row of rows; track row.row) {
+  <div class="row">
+    @for (cell of row.cells; track cell.col) {
+      <app-cell
+        [value]="cell.value"
+        [row]="cell.row"
+        [col]="cell.col"
+        [yourTurn]="yourTurn">
+      </app-cell>
+    }
   </div>
+  }
 </div>
