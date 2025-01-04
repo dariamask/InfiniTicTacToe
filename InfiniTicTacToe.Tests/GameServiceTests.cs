@@ -30,15 +30,15 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player1Id));
 
         // Assert that no message is sent to player1, game not started yet
-        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.IsAny<object>()), Times.Never);
+        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<TypedMessage>(m => m.Type != MessageType.Hello)), Times.Never);
 
         // Act
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player2Id));
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player2Id));
 
         // Assert
-        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<object>(msg => VerifyStartMessage(msg, player1Id, player2Id))), Times.Once);
-        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player2Id, It.Is<object>(msg => VerifyStartMessage(msg, player1Id, player2Id))), Times.Once);
+        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<object>(msg => VerifyStartMessage(msg, PlayerSide.X))), Times.Once);
+        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player2Id, It.Is<object>(msg => VerifyStartMessage(msg, PlayerSide.O))), Times.Once);
     }
 
     [Fact]
@@ -53,7 +53,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player2Id));
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player2Id));
 
-        var moveMessage = JsonSerializer.Serialize(new { type = "move", x = "0", y = "0" });
+        var moveMessage = JsonSerializer.Serialize(new { type = "move", x = 0, y = 0 });
 
         // Act
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, player1Id));
@@ -75,8 +75,8 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player2Id));
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player2Id));
 
-        var moveMessage1 = JsonSerializer.Serialize(new { type = "move", x = "0", y = "0", });
-        var moveMessage2 = JsonSerializer.Serialize(new { type = "move", x = "0", y = "0", });
+        var moveMessage1 = JsonSerializer.Serialize(new { type = "move", x = 0, y = 0, });
+        var moveMessage2 = JsonSerializer.Serialize(new { type = "move", x = 0, y = 0, });
 
         // Act
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage1, player1Id));
@@ -110,7 +110,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 
@@ -119,28 +119,26 @@ public class GameServiceTests
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player2Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 0, 4, 1, 0))), Times.Once);
     }
 
-    private static bool VerifyStartMessage(object message, string playerX, string playerO)
+    private static bool VerifyStartMessage(object message, PlayerSide side)
     {
-        var json = JsonSerializer.Serialize(message);
-        var dict = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
-        return dict != null &&
-               dict["type"] == "start" &&
-               dict["playerX"] == playerX &&
-               dict["playerO"] == playerO;
+        if (message is not StartMessage start)
+            return false;
+
+        return start.Type == MessageType.Start && start.Side == side;
     }
 
     private static bool VerifyMoveMessage(object message, bool success, string responseMessage, int x, int y, int scoreX, int scoreO)
     {
-        var json = JsonSerializer.Serialize(message);
-        var dict = JsonSerializer.Deserialize<Dictionary<string, object>>(json);
-        return dict != null &&
-               dict["type"].ToString() == "move" &&
-               ((JsonElement)dict["success"]).ValueKind == (success ? JsonValueKind.True : JsonValueKind.False) &&
-               dict["message"].ToString() == responseMessage &&
-               ((JsonElement)dict["x"]).GetInt32() == x &&
-               ((JsonElement)dict["y"]).GetInt32() == y &&
-               ((JsonElement)dict["scoreX"]).GetInt32() == scoreX &&
-               ((JsonElement)dict["scoreO"]).GetInt32() == scoreO;
+        if (message is not MoveResultMessage move)
+            return false;
+
+        return move.Type == MessageType.MoveResult &&
+               move.Success == success &&
+               move.Message == responseMessage &&
+               move.X == x &&
+               move.Y == y &&
+               move.ScoreX == scoreX &&
+               move.ScoreO == scoreO;
     }
 
     [Fact]
@@ -165,7 +163,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             //var playerId = (x % 2 == 0) ? player1Id : player2Id;
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
@@ -187,7 +185,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player2Id));
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player2Id));
 
-        var moveMessage = JsonSerializer.Serialize(new { type = "move", x = "9999", y = "9999" });
+        var moveMessage = JsonSerializer.Serialize(new { type = "move", x = 9999, y = 9999 });
 
         // Act
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, player1Id));
@@ -221,7 +219,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 
@@ -254,7 +252,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 
@@ -287,7 +285,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 
@@ -320,7 +318,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 
@@ -354,7 +352,7 @@ public class GameServiceTests
         // Act
         foreach (var (x, y, playerId) in moves)
         {
-            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x.ToString(), y = y.ToString() });
+            var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
         }
 

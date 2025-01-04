@@ -1,7 +1,47 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace InfiniTicTacToe.Server.Services;
+
+public sealed record TypedMessage(MessageType Type);
+
+// server -> client
+public sealed record HelloMessage(MessageType Type = MessageType.Hello);
+
+// client -> server
+public sealed record MoveMessage(int X, int Y, MessageType Type = MessageType.Move);
+
+// server -> client
+public sealed record StartMessage(PlayerSide Side, bool YourTurn, MessageType Type = MessageType.Start);
+
+// server -> client
+public sealed record MoveResultMessage(
+    bool Success,
+    string Message,
+    int X,
+    int Y,
+    int ScoreX,
+    int ScoreO,
+    bool YourTurn,
+    MessageType Type = MessageType.MoveResult);
+
+public sealed record GameEndMessage(int ScoreX, int ScoreO, MessageType Type = MessageType.End);
+
+public enum MessageType
+{
+    Hello,
+    Move,
+    Start,
+    MoveResult,
+    End,
+}
+
+public enum PlayerSide
+{
+    X,
+    O,
+}
 
 public sealed class GameService : IDisposable
 {
@@ -19,6 +59,13 @@ public sealed class GameService : IDisposable
     private int _scoreX;
     private int _scoreO;
 
+    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
     public GameService(IWebSocketGameManager webSocketManager, ILogger<GameService> logger)
     {
         _webSocketManager = webSocketManager;
@@ -26,16 +73,20 @@ public sealed class GameService : IDisposable
 
         _webSocketManager.MessageReceived += OnMessageReceived;
         _webSocketManager.ConnectionReceived += OnConnectionReceived;
+        _webSocketManager.ConnectionClosed += OnConnectionClosed;
     }
 
     public void Dispose()
     {
         _webSocketManager.MessageReceived -= OnMessageReceived;
         _webSocketManager.ConnectionReceived -= OnConnectionReceived;
+        _webSocketManager.ConnectionClosed -= OnConnectionClosed;
     }
 
     private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
     {
+        _webSocketManager.SendMessageAsync(e.SocketId, new HelloMessage()).Wait();
+
         if (_players.Count < 2)
         {
             char symbol = _players.IsEmpty ? 'X' : 'O';
@@ -48,6 +99,29 @@ public sealed class GameService : IDisposable
         }
     }
 
+    private void OnConnectionClosed(object? sender, WebsocketConnectionEventArgs e)
+    {
+        var isGameEnd = _players.Count == 2;
+
+        if (_players.TryRemove(e.SocketId, out var player))
+        {
+            _currentPlayerId = null;
+            _scoreX = 0;
+            _scoreO = 0;
+            Array.Clear(_board, 0, _board.Length);
+            _usedPositions.Clear();
+
+            if (isGameEnd)
+            {
+                foreach (var playerId in _players.Keys)
+                {
+                    _webSocketManager.SendMessageAsync(playerId, new GameEndMessage(_scoreX, _scoreO));
+                }
+            }
+
+        }
+    }
+
     // asyncronously handle messages without blocking the main execution loop for current web socket
     private void OnMessageReceived(object? sender, WebsocketMessageEventArgs e)
     {
@@ -55,7 +129,7 @@ public sealed class GameService : IDisposable
         {
             try
             {
-                await OnMessageReceivedImpl(sender, e);
+                await OnMessageReceivedImpl(e);
             }
             catch (Exception ex)
             {
@@ -67,14 +141,13 @@ public sealed class GameService : IDisposable
         task.Wait();
     }
 
-    private async Task OnMessageReceivedImpl(object? sender, WebsocketMessageEventArgs e)
+    private async Task OnMessageReceivedImpl(WebsocketMessageEventArgs e)
     {
-        var messageData = JsonSerializer.Deserialize<Dictionary<string, string>>(e.Message);
-        if (messageData != null && messageData.TryGetValue("type", out var type))
+        var messageData = JsonSerializer.Deserialize<TypedMessage>(e.Message, _jsonSerializerOptions);
+        if (messageData != null)
         {
-            if (type == "hello" && _players.Count == 2)
+            if (messageData.Type == MessageType.Hello && _players.Count == 2)
             {
-                // var playerIds = _players.Keys.ToArray();
                 var startMessage = new
                 {
                     type = "start",
@@ -84,30 +157,26 @@ public sealed class GameService : IDisposable
                         ?? throw new InvalidOperationException("Player O not found."),
                 };
 
-                await _webSocketManager.SendMessageAsync(startMessage.playerX, startMessage);
-                await _webSocketManager.SendMessageAsync(startMessage.playerO, startMessage);
+                await _webSocketManager.SendMessageAsync(startMessage.playerX, new StartMessage(PlayerSide.X, true));
+                await _webSocketManager.SendMessageAsync(startMessage.playerO, new StartMessage(PlayerSide.O, false));
             }
-            else if (type == "move"
-                && messageData.TryGetValue("x", out var xStr)
-                && messageData.TryGetValue("y", out var yStr)
-                && int.TryParse(xStr, out var x)
-                && int.TryParse(yStr, out var y))
+            else if (messageData.Type == MessageType.Move)
             {
-                var (success, responseMessage) = MakeMove(e.SocketId, x, y);
+                var moveMessage = JsonSerializer.Deserialize<MoveMessage>(e.Message, _jsonSerializerOptions)!;
+
+                var (success, responseMessage) = MakeMove(e.SocketId, moveMessage.X, moveMessage.Y);
                 var (scoreX, scoreO) = GetScores();
-                var moveMessage = new
-                {
-                    type = "move",
-                    success,
-                    message = responseMessage,
-                    x,
-                    y,
-                    scoreX,
-                    scoreO,
-                };
+                var moveMessageResult = new MoveResultMessage(success, responseMessage, moveMessage.X, moveMessage.Y, scoreX, scoreO, false);
                 foreach (var playerId in _players.Keys)
                 {
-                    await _webSocketManager.SendMessageAsync(playerId, moveMessage);
+                    if (playerId == _currentPlayerId)
+                    {
+                        await _webSocketManager.SendMessageAsync(playerId, moveMessageResult with { YourTurn = true });
+                    }
+                    else
+                    {
+                        await _webSocketManager.SendMessageAsync(playerId, moveMessageResult);
+                    }
                 }
             }
         }

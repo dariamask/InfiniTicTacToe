@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace InfiniTicTacToe.Server.Services;
 
@@ -15,15 +15,24 @@ public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
 {
     private readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
 
+    private readonly JsonSerializerOptions _jsonSerializerOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        PropertyNameCaseInsensitive = true,
+        Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+    };
+
     public event EventHandler<WebsocketMessageEventArgs>? MessageReceived;
 
     public event EventHandler<WebsocketConnectionEventArgs>? ConnectionReceived;
+
+    public event EventHandler<WebsocketConnectionEventArgs>? ConnectionClosed;
 
     public async Task SendMessageAsync(string id, object message)
     {
         if (_sockets.TryGetValue(id, out var socket) && socket.State == WebSocketState.Open)
         {
-            var jsonMessage = JsonSerializer.Serialize(message);
+            var jsonMessage = JsonSerializer.Serialize(message, _jsonSerializerOptions);
             var buffer = Encoding.UTF8.GetBytes(jsonMessage);
             await socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
         }
@@ -43,6 +52,7 @@ public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
                 {
                     await RemoveSocket(id);
                     socketFinishedTcs.SetResult(result);
+                    return;
                 }
                 else
                 {
@@ -58,6 +68,8 @@ public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
                 socketFinishedTcs.SetException(ex);
             }
         }
+
+        await RemoveSocket(id);
     }
 
     protected virtual void OnMessageReceived(string message, string socketId)
@@ -68,6 +80,7 @@ public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
     private void AddSocket(string id, WebSocket socket)
     {
         _sockets.TryAdd(id, socket);
+        //_ = SendMessageAsync(id, new { type = "hello" });
         ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
     }
 
@@ -76,6 +89,7 @@ public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
         if (_sockets.TryRemove(id, out var socket))
         {
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketManager", CancellationToken.None);
+            ConnectionClosed?.Invoke(this, new WebsocketConnectionEventArgs(id));
         }
     }
 }

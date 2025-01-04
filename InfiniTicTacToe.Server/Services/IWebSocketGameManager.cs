@@ -5,6 +5,7 @@ namespace InfiniTicTacToe.Server.Services
     public interface IWebSocketGameManager
     {
         event EventHandler<WebsocketConnectionEventArgs>? ConnectionReceived;
+        event EventHandler<WebsocketConnectionEventArgs>? ConnectionClosed;
         event EventHandler<WebsocketMessageEventArgs>? MessageReceived;
 
         Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken);
