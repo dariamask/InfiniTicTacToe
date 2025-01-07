@@ -65,31 +65,6 @@ export class BoardComponent {
     });
   }
 
-  // TODO remove?
-  ngOnChanges() {
-    if (this.moveResult) {
-      // Update board based on move result
-      const cell = this.rows[this.moveResult.x].cells[this.moveResult.y];
-      cell.value = this.moveResult.yourTurn
-        ? this.playerSide === PlayerSide.X
-          ? 'O'
-          : 'X'
-        : this.playerSide === PlayerSide.X
-          ? 'X'
-          : 'O';
-    }
-
-    if (this.startMessage) {
-      // Handle game start
-      console.log(`Game started. Player side: ${this.playerSide}, Your turn: ${this.yourTurn}`);
-      this.initializeBoard();
-    }
-
-    if (this.endMessage) {
-      // Handle game end
-    }
-  }
-
   private initializeBoard() {
     const numRows = 50;
     const numCols = 50;

@@ -26,23 +26,6 @@ export class GameComponent implements OnInit {
   constructor(private webSocketService: WebSocketService) { }
 
   ngOnInit() {
-    this.webSocketService.moveResultReceived.subscribe((message: MoveResultMessage) => {
-      console.log('MoveResultMessage received:', message);
-      this.moveResultReceived.emit(message);
-    });
-
-    this.webSocketService.startReceived.subscribe((message: StartMessage) => {
-      console.log('StartMessage received:', message);
-      this.playerSide = message.side;
-      this.yourTurn = message.yourTurn;
-      this.startReceived.emit(message);
-    });
-
-    this.webSocketService.endReceived.subscribe((message: EndMessage) => {
-      console.log('EndMessage received:', message);
-      this.endReceived.emit(message);
-    });
-
     this.webSocketService.connect();
   }
 
