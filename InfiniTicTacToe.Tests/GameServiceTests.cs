@@ -27,14 +27,14 @@ public class GameServiceTests
 
         // Act
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player1Id));
-        _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player1Id));
+        _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player1Id));
 
         // Assert that no message is sent to player1, game not started yet
-        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<TypedMessage>(m => m.Type != MessageType.Hello)), Times.Never);
+        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<TypedMessage>(m => m.Type != MessageType.ServerHello)), Times.Never);
 
         // Act
         _webSocketManagerMock.Raise(m => m.ConnectionReceived += null, new object(), new WebsocketConnectionEventArgs(player2Id));
-        _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"hello" }""", player2Id));
+        _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
 
         // Assert
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<object>(msg => VerifyStartMessage(msg, PlayerSide.X))), Times.Once);
