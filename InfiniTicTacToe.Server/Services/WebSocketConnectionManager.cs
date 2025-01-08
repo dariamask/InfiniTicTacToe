@@ -4,6 +4,8 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
+using InfiniTicTacToe.Server.Models;
+
 namespace InfiniTicTacToe.Server.Services;
 
 public sealed record WebsocketMessageEventArgs(string Message, string SocketId);
@@ -13,7 +15,7 @@ public sealed record WebsocketConnectionEventArgs(string SocketId);
 public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logger)
     : IWebSocketConnectionManager
 {
-    private readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
+    private readonly ConcurrentDictionary<string, UserInfo> _userInfo = new();
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
@@ -30,11 +32,11 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public async Task SendMessageAsync(string id, object message)
     {
-        if (_sockets.TryGetValue(id, out var socket) && socket.State == WebSocketState.Open)
+        if (_userInfo.TryGetValue(id, out var userInfo) && userInfo.WebSocket.State == WebSocketState.Open)
         {
             var jsonMessage = JsonSerializer.Serialize(message, _jsonSerializerOptions);
             var buffer = Encoding.UTF8.GetBytes(jsonMessage);
-            await socket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
+            await userInfo.WebSocket.SendAsync(new ArraySegment<byte>(buffer), WebSocketMessageType.Text, true, CancellationToken.None);
         }
     }
 
@@ -79,16 +81,17 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     private void AddSocket(string id, WebSocket socket)
     {
-        _sockets.TryAdd(id, socket);
+        var userInfo = new UserInfo(id, "Unknown", DateTimeOffset.UtcNow, socket);
+        _userInfo.TryAdd(id, userInfo);
         //_ = SendMessageAsync(id, new { type = "hello" });
         ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
     }
 
     private async Task RemoveSocket(string id)
     {
-        if (_sockets.TryRemove(id, out var socket))
+        if (_userInfo.TryRemove(id, out var userInfo))
         {
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketManager", CancellationToken.None);
+            await userInfo.WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketManager", CancellationToken.None);
             ConnectionClosed?.Invoke(this, new WebsocketConnectionEventArgs(id));
         }
     }
