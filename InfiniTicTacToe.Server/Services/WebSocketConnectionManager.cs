@@ -10,8 +10,8 @@ public sealed record WebsocketMessageEventArgs(string Message, string SocketId);
 
 public sealed record WebsocketConnectionEventArgs(string SocketId);
 
-public class WebSocketGameManager(ILogger<WebSocketGameManager> logger)
-    : IWebSocketGameManager
+public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logger)
+    : IWebSocketConnectionManager
 {
     private readonly ConcurrentDictionary<string, WebSocket> _sockets = new();
 

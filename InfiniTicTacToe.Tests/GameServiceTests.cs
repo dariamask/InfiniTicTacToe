@@ -10,11 +10,11 @@ namespace InfiniTicTacToe.Tests;
 
 public class GameServiceTests
 {
-    private readonly Mock<IWebSocketGameManager> _webSocketManagerMock;
+    private readonly Mock<IWebSocketConnectionManager> _webSocketManagerMock;
 
     public GameServiceTests()
     {
-        _webSocketManagerMock = new Mock<IWebSocketGameManager>();
+        _webSocketManagerMock = new Mock<IWebSocketConnectionManager>();
         _ = new GameService(_webSocketManagerMock.Object, new Mock<ILogger<GameService>>().Object);
     }
 

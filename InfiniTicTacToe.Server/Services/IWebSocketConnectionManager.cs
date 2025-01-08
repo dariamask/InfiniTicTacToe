@@ -2,7 +2,7 @@
 
 namespace InfiniTicTacToe.Server.Services
 {
-    public interface IWebSocketGameManager
+    public interface IWebSocketConnectionManager
     {
         event EventHandler<WebsocketConnectionEventArgs>? ConnectionReceived;
         event EventHandler<WebsocketConnectionEventArgs>? ConnectionClosed;

@@ -8,7 +8,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<IWebSocketGameManager, WebSocketGameManager>();
+builder.Services.AddSingleton<IWebSocketConnectionManager, WebSocketConnectionManager>();
 builder.Services.AddSingleton<GameService>();
 
 var app = builder.Build();
@@ -46,7 +46,7 @@ app.Map("/ws", async context =>
         var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         var socketFinishedTcs = new TaskCompletionSource<object>();
 
-        var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketGameManager>();
+        var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketConnectionManager>();
         var socketId = Guid.NewGuid().ToString();
         await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, socketFinishedTcs, CancellationToken.None);
         await socketFinishedTcs.Task;

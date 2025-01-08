@@ -9,7 +9,7 @@ public sealed class GameService : IDisposable
     private const int MaxX = 100;
     private const int MaxY = 100;
 
-    private readonly IWebSocketGameManager _webSocketManager;
+    private readonly IWebSocketConnectionManager _webSocketManager;
     private readonly ILogger<GameService> _logger;
     private readonly ConcurrentDictionary<string, Player> _players = new();
     private readonly char[,] _board = new char[MaxX, MaxY];
@@ -27,7 +27,7 @@ public sealed class GameService : IDisposable
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
     };
 
-    public GameService(IWebSocketGameManager webSocketManager, ILogger<GameService> logger)
+    public GameService(IWebSocketConnectionManager webSocketManager, ILogger<GameService> logger)
     {
         _webSocketManager = webSocketManager;
         _logger = logger;
