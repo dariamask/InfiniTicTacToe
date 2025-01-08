@@ -4,45 +4,6 @@ using System.Text.Json.Serialization;
 
 namespace InfiniTicTacToe.Server.Services;
 
-public sealed record TypedMessage(MessageType Type);
-
-// server -> client
-public sealed record HelloMessage(MessageType Type = MessageType.Hello);
-
-// client -> server
-public sealed record MoveMessage(int X, int Y, MessageType Type = MessageType.Move);
-
-// server -> client
-public sealed record StartMessage(PlayerSide Side, bool YourTurn, MessageType Type = MessageType.Start);
-
-// server -> client
-public sealed record MoveResultMessage(
-    bool Success,
-    string Message,
-    int X,
-    int Y,
-    int ScoreX,
-    int ScoreO,
-    bool YourTurn,
-    MessageType Type = MessageType.MoveResult);
-
-public sealed record GameEndMessage(int ScoreX, int ScoreO, MessageType Type = MessageType.End);
-
-public enum MessageType
-{
-    Hello,
-    Move,
-    Start,
-    MoveResult,
-    End,
-}
-
-public enum PlayerSide
-{
-    X,
-    O,
-}
-
 public sealed class GameService : IDisposable
 {
     private const int MaxX = 100;
@@ -85,7 +46,7 @@ public sealed class GameService : IDisposable
 
     private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
     {
-        _webSocketManager.SendMessageAsync(e.SocketId, new HelloMessage()).Wait();
+        _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage()).Wait();
 
         if (_players.Count < 2)
         {
@@ -146,19 +107,15 @@ public sealed class GameService : IDisposable
         var messageData = JsonSerializer.Deserialize<TypedMessage>(e.Message, _jsonSerializerOptions);
         if (messageData != null)
         {
-            if (messageData.Type == MessageType.Hello && _players.Count == 2)
+            if (messageData.Type == MessageType.ClientHello && _players.Count == 2)
             {
-                var startMessage = new
-                {
-                    type = "start",
-                    playerX = _players.Where(x => x.Value.Symbol == 'X').Select(x => x.Key).FirstOrDefault()
-                        ?? throw new InvalidOperationException("Player X not found."),
-                    playerO = _players.Where(x => x.Value.Symbol == 'O').Select(x => x.Key).FirstOrDefault()
-                        ?? throw new InvalidOperationException("Player O not found."),
-                };
+                var playerX = _players.Where(x => x.Value.Symbol == 'X').Select(x => x.Key).FirstOrDefault()
+                     ?? throw new InvalidOperationException("Player X not found.");
+                var playerO = _players.Where(x => x.Value.Symbol == 'O').Select(x => x.Key).FirstOrDefault()
+                     ?? throw new InvalidOperationException("Player O not found.");
 
-                await _webSocketManager.SendMessageAsync(startMessage.playerX, new StartMessage(PlayerSide.X, true));
-                await _webSocketManager.SendMessageAsync(startMessage.playerO, new StartMessage(PlayerSide.O, false));
+                await _webSocketManager.SendMessageAsync(playerX, new StartMessage(PlayerSide.X, true));
+                await _webSocketManager.SendMessageAsync(playerO, new StartMessage(PlayerSide.O, false));
             }
             else if (messageData.Type == MessageType.Move)
             {

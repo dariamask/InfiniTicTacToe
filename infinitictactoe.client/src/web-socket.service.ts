@@ -1,7 +1,8 @@
 import { Injectable, EventEmitter } from '@angular/core';
 import { WebSocketSubject } from 'rxjs/webSocket';
 import {
-  HelloMessage,
+  ClientHelloMessage,
+  ServerHelloMessage,
   MoveMessage,
   StartMessage,
   EndMessage,
@@ -47,7 +48,7 @@ export class WebSocketService {
   private handleMessage(message: TypedMessage) {
     console.warn(`message received of type ${message.type}`);
     switch (message.type) {
-      case MessageType.Hello:
+      case MessageType.ServerHello:
         console.log('Hello received');
         break;
       case MessageType.MoveResult:
@@ -72,7 +73,7 @@ export class WebSocketService {
   }
 
   private sendHelloMessage() {
-    const helloMessage = new HelloMessage();
+    const helloMessage = new ClientHelloMessage("Your nickname");
     this.sendMessage(helloMessage);
   }
 
