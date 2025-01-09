@@ -4,6 +4,7 @@ import { BoardComponent } from '../board/board.component';
 import { PlayerListComponent } from '../player-list/player-list.component';
 import { ChatComponent } from '../chat/chat.component';
 import { MoveResultMessage, StartMessage, EndMessage, PlayerSide } from '../models';
+import { GameControlsComponent } from '../game-controls/game-controls.component'; // Import the GameControlsComponent
 
 @Component({
   selector: 'app-game',
@@ -13,6 +14,7 @@ import { MoveResultMessage, StartMessage, EndMessage, PlayerSide } from '../mode
     BoardComponent,
     PlayerListComponent,
     ChatComponent,
+    GameControlsComponent,
   ],
 })
 export class GameComponent implements OnInit {
