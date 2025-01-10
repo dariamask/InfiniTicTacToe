@@ -46,8 +46,21 @@ public sealed class GameService : IDisposable
 
     private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
     {
-        _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage()).Wait();
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await OnConnectionReceivedImpl(e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing connection");
+            }
+        });
+    }
 
+    private async Task OnConnectionReceivedImpl(WebsocketConnectionEventArgs e)
+    {
         if (_players.Count < 2)
         {
             char symbol = _players.IsEmpty ? 'X' : 'O';
@@ -58,9 +71,26 @@ public sealed class GameService : IDisposable
                     ?? throw new InvalidOperationException("Player X not found.");
             }
         }
+
+        await _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage());
     }
 
     private void OnConnectionClosed(object? sender, WebsocketConnectionEventArgs e)
+    {
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await OnConnectionClosedImpl(e);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing connection closed");
+            }
+        });
+    }
+
+    private async Task OnConnectionClosedImpl(WebsocketConnectionEventArgs e)
     {
         var isGameEnd = _players.Count == 2;
 
@@ -76,7 +106,7 @@ public sealed class GameService : IDisposable
             {
                 foreach (var playerId in _players.Keys)
                 {
-                    _webSocketManager.SendMessageAsync(playerId, new GameEndMessage(_scoreX, _scoreO));
+                    await _webSocketManager.SendMessageAsync(playerId, new GameEndMessage(_scoreX, _scoreO));
                 }
             }
 
@@ -86,7 +116,7 @@ public sealed class GameService : IDisposable
     // asyncronously handle messages without blocking the main execution loop for current web socket
     private void OnMessageReceived(object? sender, WebsocketMessageEventArgs e)
     {
-        var task = Task.Run(async () =>
+        _ = Task.Run(async () =>
         {
             try
             {
@@ -97,9 +127,6 @@ public sealed class GameService : IDisposable
                 _logger.LogError(ex, "Error processing message");
             }
         });
-
-        // TODO remove
-        task.Wait();
     }
 
     private async Task OnMessageReceivedImpl(WebsocketMessageEventArgs e)
