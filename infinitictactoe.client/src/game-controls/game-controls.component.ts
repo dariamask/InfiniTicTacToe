@@ -14,7 +14,6 @@ import { ClientHelloMessage, ReadyMessage } from '../models';
 export class GameControlsComponent implements OnInit {
   @Output() startGame: EventEmitter<void> = new EventEmitter();
   @Output() endGame: EventEmitter<void> = new EventEmitter();
-  @Output() clientHello: EventEmitter<string> = new EventEmitter();
 
   nickname: string = '';
 
@@ -26,8 +25,9 @@ export class GameControlsComponent implements OnInit {
     this.webSocketService.sendMessage(new ClientHelloMessage(this.nickname))
   }
 
-
-
+  onNicknameChange() {
+    this.webSocketService.sendMessage(new ClientHelloMessage(this.nickname))
+  }
 
   onStartGame() {
     console.log('Start Game button clicked');
