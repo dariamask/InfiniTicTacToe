@@ -42,8 +42,8 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public async Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken)
     {
-        AddSocket(id, socket);
-
+//вернуть AddSocket на место, не передавать им€, убрать им€ из UserInfo
+//добавить промежуточный слой, который будет заниматьс€ деспетчеризацией. ¬ зависимости от какого сообщени€ какую логику мы вызываем. 
         var buffer = new byte[1024 * 4];
         while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
@@ -59,6 +59,17 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 else
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+// таск ран добавить, внутри создавать скоуп. »з јйсервис—коуп‘актори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
+                    var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
+
+                    if (typedMessage?.Type == MessageType.ClientHello)
+                    {
+                        var helloMessage = JsonSerializer.Deserialize<ClientHelloMessage>(message, _jsonSerializerOptions);
+                        if (helloMessage != null)
+                        {
+                            AddSocket(id, socket, helloMessage.Nickname);
+                        }
+                    }
 
                     OnMessageReceived(message, id);
                 }
@@ -79,11 +90,10 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
         MessageReceived?.Invoke(this, new(message, socketId));
     }
 
-    private void AddSocket(string id, WebSocket socket)
+    private void AddSocket(string id, WebSocket socket, string nickname)
     {
-        var userInfo = new UserInfo(id, "Unknown", DateTimeOffset.UtcNow, socket);
+        var userInfo = new UserInfo(id, nickname, DateTimeOffset.UtcNow, socket);
         _userInfo.TryAdd(id, userInfo);
-        //_ = SendMessageAsync(id, new { type = "hello" });
         ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
     }
 

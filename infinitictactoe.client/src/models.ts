@@ -1,8 +1,9 @@
 export enum MessageType {
   ClientHello = 'clientHello',
   ServerHello = 'serverHello',
-  Move = 'move',
+  Ready = 'ready',
   Start = 'start',
+  Move = 'move',
   End = 'end',
   MoveResult = 'moveResult',
 }
@@ -32,6 +33,12 @@ export class ClientHelloMessage extends TypedMessage {
 export class ServerHelloMessage extends TypedMessage {
   constructor() {
     super(MessageType.ServerHello);
+  }
+}
+
+export class ReadyMessage extends TypedMessage {
+  constructor() {
+    super(MessageType.Ready);
   }
 }
 

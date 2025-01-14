@@ -16,17 +16,24 @@ import {
 })
 export class WebSocketService {
   private socket$: WebSocketSubject<any> | undefined;
+  private resolveConnectionEstablished: ((value: void | PromiseLike<void>) => void) | undefined;
   public moveResultReceived: EventEmitter<MoveResultMessage> = new EventEmitter();
   public startReceived: EventEmitter<StartMessage> = new EventEmitter();
   public endReceived: EventEmitter<EndMessage> = new EventEmitter();
+  public connectionEstablished: Promise<void> = new Promise((resolve) => this.resolveConnectionEstablished = resolve);
+
 
   connect() {
+    const nickname = 'Your nickname';
+
     this.socket$ = new WebSocketSubject({
       url: 'wss://localhost:7146/ws',
       openObserver: {
         next: () => {
           console.log('Connection ok');
-          this.sendHelloMessage();
+          //this.sendHelloMessage(nickname);
+          if(this.resolveConnectionEstablished)
+            this.resolveConnectionEstablished();
         },
       },
     });
@@ -43,6 +50,16 @@ export class WebSocketService {
       },
     });
     console.log('subscribed to ws');
+  }
+
+  disconnect() {
+    if (this.socket$) {
+      this.socket$.complete();
+      this.socket$ = undefined;
+      console.log('WebSocket connection closed.');
+    } else {
+      console.error('WebSocket connection is not established.');
+    }
   }
 
   private handleMessage(message: TypedMessage) {
@@ -72,8 +89,8 @@ export class WebSocketService {
     }
   }
 
-  private sendHelloMessage() {
-    const helloMessage = new ClientHelloMessage("Your nickname");
+  private sendHelloMessage(nickname: string) {
+    const helloMessage = new ClientHelloMessage(nickname);
     this.sendMessage(helloMessage);
   }
 
