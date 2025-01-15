@@ -19,7 +19,7 @@ public sealed class Game
     public ConcurrentDictionary<string, Player> Players { get; } = new();
     public GameStatus Status { get; set; }
     public HashSet<(int, int)> UsedPositions { get; } = new();
-    // вместо массива чаров - словарик, в котором ключ это котреж координат ху, а значение объект (статус ячейки - х, о, порядковый номер хода, флаг IsCrossedOut). 
+    // РІРјРµСЃС‚Рѕ РјР°СЃСЃРёРІР° С‡Р°СЂРѕРІ - СЃР»РѕРІР°СЂРёРє, РІ РєРѕС‚РѕСЂРѕРј РєР»СЋС‡ СЌС‚Рѕ РєРѕС‚СЂРµР¶ РєРѕРѕСЂРґРёРЅР°С‚ С…Сѓ, Р° Р·РЅР°С‡РµРЅРёРµ РѕР±СЉРµРєС‚ (СЃС‚Р°С‚СѓСЃ СЏС‡РµР№РєРё - С…, Рѕ, РїРѕСЂСЏРґРєРѕРІС‹Р№ РЅРѕРјРµСЂ С…РѕРґР°, С„Р»Р°Рі IsCrossedOut). 
     public char[,] Board { get; } = new char[GameService.MaxX, GameService.MaxY];
     public string? CurrentPlayerId { get; set; }
     public int ScoreX { get; set; }
@@ -150,8 +150,8 @@ public sealed class GameService : IDisposable
         {
             if (messageData.Type == MessageType.ClientHello)
             {
-                // QuestionForAndo: получается, hello теперь отправляем только одному игроку,
-                // т.к. у него нет ещё нет оппонента.
+                // QuestionForAndo: РїРѕР»СѓС‡Р°РµС‚СЃСЏ, hello С‚РµРїРµСЂСЊ РѕС‚РїСЂР°РІР»СЏРµРј С‚РѕР»СЊРєРѕ РѕРґРЅРѕРјСѓ РёРіСЂРѕРєСѓ,
+                // С‚.Рє. Сѓ РЅРµРіРѕ РЅРµС‚ РµС‰С‘ РЅРµС‚ РѕРїРїРѕРЅРµРЅС‚Р°.
                 await _webSocketManager.SendMessageAsync(e.SocketId, new StartMessage(PlayerSide.X, true));
             }
             else if (messageData.Type == MessageType.Ready)
@@ -180,7 +180,7 @@ public sealed class GameService : IDisposable
                 }
                 else
                 {
-                    // TODO: передать никнейм
+                    // TODO: РїРµСЂРµРґР°С‚СЊ РЅРёРєРЅРµР№Рј
                     var newGame = new Game(Guid.NewGuid().ToString());
                     newGame.Players.TryAdd(e.SocketId, new Player(e.SocketId, 'X', "nickname"));
                     _games.TryAdd(newGame.Id, newGame);

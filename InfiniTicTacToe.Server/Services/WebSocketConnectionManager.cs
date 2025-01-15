@@ -42,8 +42,8 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public async Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken)
     {
-//вернуть AddSocket на место, не передавать имя, убрать имя из UserInfo
-//добавить промежуточный слой, который будет заниматься деспетчеризацией. В зависимости от какого сообщения какую логику мы вызываем. 
+//РІРµСЂРЅСѓС‚СЊ AddSocket РЅР° РјРµСЃС‚Рѕ, РЅРµ РїРµСЂРµРґР°РІР°С‚СЊ РёРјСЏ, СѓР±СЂР°С‚СЊ РёРјСЏ РёР· UserInfo
+//РґРѕР±Р°РІРёС‚СЊ РїСЂРѕРјРµР¶СѓС‚РѕС‡РЅС‹Р№ СЃР»РѕР№, РєРѕС‚РѕСЂС‹Р№ Р±СѓРґРµС‚ Р·Р°РЅРёРјР°С‚СЊСЃСЏ РґРµСЃРїРµС‚С‡РµСЂРёР·Р°С†РёРµР№. Р’ Р·Р°РІРёСЃРёРјРѕСЃС‚Рё РѕС‚ РєР°РєРѕРіРѕ СЃРѕРѕР±С‰РµРЅРёСЏ РєР°РєСѓСЋ Р»РѕРіРёРєСѓ РјС‹ РІС‹Р·С‹РІР°РµРј. 
         var buffer = new byte[1024 * 4];
         while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
@@ -59,7 +59,7 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 else
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-// таск ран добавить, внутри создавать скоуп. Из АйсервисСкоупФактори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
+// С‚Р°СЃРє СЂР°РЅ РґРѕР±Р°РІРёС‚СЊ, РІРЅСѓС‚СЂРё СЃРѕР·РґР°РІР°С‚СЊ СЃРєРѕСѓРї. РР· РђР№СЃРµСЂРІРёСЃРЎРєРѕСѓРїР¤Р°РєС‚РѕСЂРё, СЂРµР·РѕР»РІРёС‚СЊ РґРёСЃРїР°С‚С‡РµСЂР° Рё РїРµСЂРµРґР°РІР°С‚СЊ РµРјСѓ СЃРѕРѕР±С‰РµРЅРёРµ, С‡С‚Рѕ Р±С‹ РѕРЅ РґР°Р»СЊС€Рµ РµРіРѕ РѕР±СЂР°Р±РѕС‚Р°Р».
                     var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
 
                     if (typedMessage?.Type == MessageType.ClientHello)
