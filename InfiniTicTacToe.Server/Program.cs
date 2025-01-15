@@ -33,7 +33,7 @@ app.UseWebSockets();
 
 app.MapControllers();
 
-//https://learn.microsoft.com/ru-ru/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0#accept-websocket-requests
+// https://learn.microsoft.com/ru-ru/aspnet/core/fundamentals/websockets?view=aspnetcore-9.0#accept-websocket-requests
 app.Map("/ws", async context =>
 {
     if (!context.WebSockets.IsWebSocketRequest)
