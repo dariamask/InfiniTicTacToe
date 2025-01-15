@@ -7,4 +7,6 @@
     <!-- Folder where production build objects will be placed -->
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist\infinitictactoe.client\browser\</BuildOutputFolder>
   </PropertyGroup>
+  <ItemGroup>
+  </ItemGroup>
 </Project>

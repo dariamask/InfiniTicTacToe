@@ -1,0 +1,42 @@
+.game-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin: 20px;
+}
+
+  .game-controls input {
+    margin-bottom: 10px;
+    padding: 5px;
+  }
+
+  .game-controls button {
+    margin: 5px;
+    padding: 10px;
+  }
+
+.sidebar {
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 200px;
+  height: 100%;
+  background-color: #f4f4f4;
+  box-shadow: -2px 0 5px rgba(0, 0, 0, 0.1);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+  .sidebar input {
+    margin-bottom: 10px;
+    padding: 5px;
+    width: 100%;
+  }
+
+  .sidebar button {
+    margin: 5px;
+    padding: 10px;
+    width: 100%;
+  }

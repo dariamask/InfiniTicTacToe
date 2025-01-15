@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35027.167
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "InfiniTicTacToe.Server", "InfiniTicTacToe.Server\InfiniTicTacToe.Server.csproj", "{6B2E0408-F284-475D-B15C-EC73F28AEA8C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfiniTicTacToe.Server", "InfiniTicTacToe.Server\InfiniTicTacToe.Server.csproj", "{6B2E0408-F284-475D-B15C-EC73F28AEA8C}"
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "infinitictactoe.client", "infinitictactoe.client\infinitictactoe.client.esproj", "{BEECDE13-E571-47D0-8548-BC884ABBE48F}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfiniTicTacToe.Tests", "InfiniTicTacToe.Tests\InfiniTicTacToe.Tests.csproj", "{C11A28E2-9B1E-4F06-A4DF-049259153E59}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,6 +25,10 @@ Global
 		{BEECDE13-E571-47D0-8548-BC884ABBE48F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BEECDE13-E571-47D0-8548-BC884ABBE48F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BEECDE13-E571-47D0-8548-BC884ABBE48F}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{C11A28E2-9B1E-4F06-A4DF-049259153E59}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C11A28E2-9B1E-4F06-A4DF-049259153E59}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C11A28E2-9B1E-4F06-A4DF-049259153E59}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C11A28E2-9B1E-4F06-A4DF-049259153E59}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
