@@ -9,6 +9,11 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "infinitictactoe.client", "i
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfiniTicTacToe.Tests", "InfiniTicTacToe.Tests\InfiniTicTacToe.Tests.csproj", "{C11A28E2-9B1E-4F06-A4DF-049259153E59}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9B50458E-81E9-4911-827D-0ACEEDBE4E94}"
+	ProjectSection(SolutionItems) = preProject
+		docker-compose.yml = docker-compose.yml
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

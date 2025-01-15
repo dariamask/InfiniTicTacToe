@@ -27,7 +27,7 @@ export class WebSocketService {
     const nickname = 'Your nickname';
 
     this.socket$ = new WebSocketSubject({
-      url: 'wss://localhost:7146/ws',
+      url: 'wss://tictaktoe.navferty.com/ws',
       openObserver: {
         next: () => {
           console.log('Connection ok');

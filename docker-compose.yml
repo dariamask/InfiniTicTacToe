@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  client:
+    image: navferty/infinitictactoe-client:latest
+    ports:
+      - "8080:8080"
+
+  server:
+    image: navferty/infinitictactoe-server:latest
+    ports:
+      - "8081:5154"
+    depends_on:
+      - client
