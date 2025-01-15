@@ -1,0 +1,90 @@
+name: Build and Deploy
+
+on:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    services:
+      docker:
+        image: docker:19.03.12
+        options: --privileged
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up .NET
+      uses: actions/setup-dotnet@v2
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18.x'
+
+    - name: Install dependencies for client
+      run: |
+        cd infinitictactoe.client
+        npm install
+
+    - name: Build client
+      run: |
+        cd infinitictactoe.client
+        npm run build
+
+    - name: Build server
+      run: |
+        cd InfiniTicTacToe.Server
+        dotnet publish -c Release -o out
+
+    - name: Build Docker images
+      run: |
+        docker build -t infinitictactoe-client:latest -f infinitictactoe.client/Dockerfile .
+        docker build -t infinitictactoe-server:latest -f InfiniTicTacToe.Server/Dockerfile .
+
+    - name: Push Docker images to Docker Hub
+      env:
+        DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+        DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      run: |
+        echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin
+        docker tag infinitictactoe-client:latest $DOCKER_USERNAME/infinitictactoe-client:latest
+        docker tag infinitictactoe-server:latest $DOCKER_USERNAME/infinitictactoe-server:latest
+        docker push $DOCKER_USERNAME/infinitictactoe-client:latest
+        docker push $DOCKER_USERNAME/infinitictactoe-server:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Add server to known hosts
+      run: |
+        mkdir -p ~/.ssh
+        ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+    - name: Deploy to server
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        SERVER_USER: ${{ secrets.SERVER_USER }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key
+        chmod 600 private_key
+        scp -i private_key docker-compose.yml $SERVER_USER@$SERVER_HOST:~/infinitictactoe/docker-compose.yml
+        ssh -i private_key $SERVER_USER@$SERVER_HOST << 'EOF'
+          cd ./infinitictactoe
+          docker compose pull
+          docker compose down
+          docker compose up -d
+        EOF

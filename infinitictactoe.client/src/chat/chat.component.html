@@ -1,0 +1,10 @@
+<div class="chat">
+  <h3>Chat</h3>
+  <div class="messages">
+    @for (message of messages; track message) {
+    <div>{{ message }}</div>
+    }
+  </div>
+  <input (keyup.enter)="sendMessage()" placeholder="Type a message...">
+  <button (click)="sendMessage()">Send</button>
+</div>

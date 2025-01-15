@@ -1,0 +1,8 @@
+<div class="sidebar">
+  <input type="text" [(ngModel)]="nickname"
+         (input)="onNicknameChange()"
+         placeholder="Enter your nickname" />
+  <button (click)="onStartGame()">Start Game</button>
+  <button (click)="onEndGame()">End Game</button>
+</div>
+
