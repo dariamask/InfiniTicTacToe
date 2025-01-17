@@ -42,8 +42,8 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public async Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken)
     {
-//вернуть AddSocket на место, не передавать имя, убрать имя из UserInfo
-//добавить промежуточный слой, который будет заниматься деспетчеризацией. В зависимости от какого сообщения какую логику мы вызываем. 
+        // вернуть AddSocket на место, не передавать имя, убрать имя из UserInfo
+        // добавить промежуточный слой, который будет заниматься деспетчеризацией. В зависимости от какого сообщения какую логику мы вызываем.
         var buffer = new byte[1024 * 4];
         while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
@@ -59,7 +59,8 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 else
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-// таск ран добавить, внутри создавать скоуп. Из АйсервисСкоупФактори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
+
+                    // таск ран добавить, внутри создавать скоуп. Из АйсервисСкоупФактори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
                     var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
 
                     if (typedMessage?.Type == MessageType.ClientHello)
@@ -73,7 +74,6 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
                     OnMessageReceived(message, id);
                 }
-
             }
             catch (Exception ex)
             {

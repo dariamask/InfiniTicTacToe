@@ -9,6 +9,10 @@
     <SpaProxyServerUrl>https://localhost:4200</SpaProxyServerUrl>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
     <ProjectReference Include="..\infinitictactoe.client\infinitictactoe.client.esproj">
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>

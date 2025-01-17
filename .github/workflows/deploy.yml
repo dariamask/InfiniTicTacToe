@@ -37,7 +37,7 @@ jobs:
     - name: Build client
       run: |
         cd infinitictactoe.client
-        npm run build
+        npx ng build --configuration production
 
     - name: Build server
       run: |

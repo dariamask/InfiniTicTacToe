@@ -1,5 +1,6 @@
 import { Injectable, EventEmitter } from '@angular/core';
 import { WebSocketSubject } from 'rxjs/webSocket';
+import { environment } from './environments/environment';
 import {
   ClientHelloMessage,
   ServerHelloMessage,
@@ -22,12 +23,11 @@ export class WebSocketService {
   public endReceived: EventEmitter<EndMessage> = new EventEmitter();
   public connectionEstablished: Promise<void> = new Promise((resolve) => this.resolveConnectionEstablished = resolve);
 
-
   connect() {
     const nickname = 'Your nickname';
 
     this.socket$ = new WebSocketSubject({
-      url: 'wss://tictaktoe.navferty.com/ws',
+      url: environment.webSocketUrl,
       openObserver: {
         next: () => {
           console.log('Connection ok');
