@@ -42,7 +42,8 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public async Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken)
     {
-        // вернуть AddSocket на место, не передавать имя, убрать имя из UserInfo
+        AddSocket(id, socket);
+
         // добавить промежуточный слой, который будет заниматься деспетчеризацией. В зависимости от какого сообщения какую логику мы вызываем.
         var buffer = new byte[1024 * 4];
         while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
@@ -59,20 +60,10 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 else
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
+                    OnMessageReceived(message, id);
 
                     // таск ран добавить, внутри создавать скоуп. Из АйсервисСкоупФактори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
-                    var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
-
-                    if (typedMessage?.Type == MessageType.ClientHello)
-                    {
-                        var helloMessage = JsonSerializer.Deserialize<ClientHelloMessage>(message, _jsonSerializerOptions);
-                        if (helloMessage != null)
-                        {
-                            AddSocket(id, socket, helloMessage.Nickname);
-                        }
-                    }
-
-                    OnMessageReceived(message, id);
+                    // var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
                 }
             }
             catch (Exception ex)
@@ -90,9 +81,9 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
         MessageReceived?.Invoke(this, new(message, socketId));
     }
 
-    private void AddSocket(string id, WebSocket socket, string nickname)
+    private void AddSocket(string id, WebSocket socket)
     {
-        var userInfo = new UserInfo(id, nickname, DateTimeOffset.UtcNow, socket);
+        var userInfo = new UserInfo(id, DateTimeOffset.UtcNow, socket);
         _userInfo.TryAdd(id, userInfo);
         ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
     }
