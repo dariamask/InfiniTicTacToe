@@ -11,6 +11,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "InfiniTicTacToe.Tests", "In
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{9B50458E-81E9-4911-827D-0ACEEDBE4E94}"
 	ProjectSection(SolutionItems) = preProject
+		.github\workflows\deploy.yml = .github\workflows\deploy.yml
 		docker-compose.yml = docker-compose.yml
 	EndProjectSection
 EndProject

@@ -288,6 +288,8 @@ dotnet_diagnostic.SA1309.severity = none
 dotnet_diagnostic.SA1310.severity = none
 #[SA1402] File may only contain a single type
 dotnet_diagnostic.SA1402.severity = none
+#[SA1503] The opening and closing braces for a C# statement have been omitted.
+dotnet_diagnostic.SA1503.severity = none
 #[SA1512] SingleLineCommentsMustNotBeFollowedByBlankLine
 dotnet_diagnostic.SA1512.severity = none
 #[SA1600] Elements should be documented
