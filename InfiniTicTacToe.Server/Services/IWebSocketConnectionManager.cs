@@ -13,5 +13,11 @@ namespace InfiniTicTacToe.Server.Services
         Task ReceiveMessagesAsync(string id, WebSocket socket, TaskCompletionSource<object> socketFinishedTcs, CancellationToken cancellationToken);
 
         Task SendMessageAsync(string id, object message);
+
+        void AddSocket(string socketId, WebSocket socket);
+
+        WebSocket? GetSocketById(string socketId);
+
+        Task RemoveSocket(string? socketId, CancellationToken cancellationToken);
     }
 }
