@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 using InfiniTicTacToe.Server.Services;
@@ -9,6 +10,7 @@ using Moq;
 
 namespace InfiniTicTacToe.Tests;
 
+[SuppressMessage("Style", "IDE0037:Use inferred member name", Justification = "Explicit names for members of anonymous types")]
 public class GameServiceTests
 {
     private readonly Mock<IWebSocketConnectionManager> _webSocketManagerMock;
@@ -112,7 +114,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (1, 0, player2Id),
             (0, 1, player1Id), (1, 1, player2Id),
@@ -127,35 +129,13 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
         // Assert
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 0, 4, 1, 0))), Times.Once);
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player2Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 0, 4, 1, 0))), Times.Once);
-    }
-
-    private static bool VerifyStartMessage(object message, PlayerSide side)
-    {
-        if (message is not StartMessage start)
-            return false;
-
-        return start.Type == MessageType.Start && start.Side == side;
-    }
-
-    private static bool VerifyMoveMessage(object message, bool success, string responseMessage, int x, int y, int scoreX, int scoreO)
-    {
-        if (message is not MoveResultMessage move)
-            return false;
-
-        return move.Type == MessageType.MoveResult &&
-               move.Success == success &&
-               move.Message == responseMessage &&
-               move.X == x &&
-               move.Y == y &&
-               move.ScoreX == scoreX &&
-               move.ScoreO == scoreO;
     }
 
     [Fact]
@@ -172,7 +152,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (1, 0, player2Id),
             (0, 1, player1Id), (1, 1, player2Id),
@@ -185,7 +165,7 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
@@ -215,8 +195,11 @@ public class GameServiceTests
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 6);
 
         // Assert
-        _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id,
-            It.Is<object>(msg => VerifyMoveMessage(msg, false, "Move out of bounds.", 9999, 9999, 0, 0))), Times.Once);
+        _webSocketManagerMock.Verify(
+            m => m.SendMessageAsync(
+                player1Id,
+                It.Is<object>(msg => VerifyMoveMessage(msg, false, "Move out of bounds.", 9999, 9999, 0, 0))),
+            Times.Once);
     }
 
     [Fact]
@@ -233,13 +216,13 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
-            (0, 0, player1Id), (1, 0, player2Id),
-            (0, 1, player1Id), (1, 1, player2Id),
-            (0, 2, player1Id), (1, 2, player2Id),
-            (0, 3, player1Id), (1, 3, player2Id),
-            (0, 4, player1Id),
+            (0, 2, player1Id), (1, 0, player2Id),
+            (0, 3, player1Id), (1, 1, player2Id),
+            (0, 4, player1Id), (1, 2, player2Id),
+            (0, 5, player1Id), (1, 3, player2Id),
+            (0, 6, player1Id),
         };
 
         // Act
@@ -248,7 +231,7 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
@@ -271,7 +254,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (0, 1, player2Id),
             (1, 0, player1Id), (1, 1, player2Id),
@@ -286,7 +269,7 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
@@ -309,7 +292,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (1, 0, player2Id),
             (1, 1, player1Id), (2, 0, player2Id),
@@ -324,7 +307,7 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
@@ -347,7 +330,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (1, 0, player2Id),
             (1, 1, player1Id), (2, 0, player2Id),
@@ -362,7 +345,7 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
@@ -385,7 +368,7 @@ public class GameServiceTests
         _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs("""{ "type":"clientHello" }""", player2Id));
         await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == 4);
 
-        var moves = new List<(int x, int y, string playerId)>
+        var moves = new List<(int X, int Y, string PlayerId)>
         {
             (0, 0, player1Id), (1, 0, player2Id),
             (1, 1, player1Id), (2, 0, player2Id),
@@ -401,25 +384,13 @@ public class GameServiceTests
         {
             var moveMessage = JsonSerializer.Serialize(new { type = "move", x = x, y = y });
             _webSocketManagerMock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(moveMessage, playerId));
-            var expectedCalls = 4 + 2 * move++;
+            var expectedCalls = 4 + (2 * move++);
             await WaitUntil(() => _webSocketManagerMock.Invocations.Count(x => x.Method.Name == "SendMessageAsync") == expectedCalls);
         }
 
         // Assert
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player1Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 5, 5, 1, 0))), Times.Once);
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(player2Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 5, 5, 1, 0))), Times.Once);
-    }
-
-    private async Task WaitUntilMessageSent<TMessage>(Func<TMessage, bool> condition, string playerId, int timeout = 1000)
-    {
-        await WaitUntil(() =>
-        {
-            return _webSocketManagerMock.Invocations
-                .Where(x => x.Method.Name == "SendMessageAsync" && x.Arguments[0].ToString() == playerId)
-                .Select(x => x.Arguments[1])
-                .OfType<TMessage>()
-                .Any(message => condition(message));
-        }, timeout);
     }
 
     private static async Task WaitUntil(Func<bool> condition, int timeout = 1000)
@@ -436,5 +407,41 @@ public class GameServiceTests
         }
 
         throw new TimeoutException();
+    }
+
+    private static bool VerifyStartMessage(object message, PlayerSide side)
+    {
+        if (message is not StartMessage start)
+            return false;
+
+        return start.Type == MessageType.Start && start.Side == side;
+    }
+
+    private static bool VerifyMoveMessage(object message, bool success, string responseMessage, int x, int y, int scoreX, int scoreO)
+    {
+        if (message is not MoveResultMessage move)
+            return false;
+
+        return move.Type == MessageType.MoveResult &&
+               move.Success == success &&
+               move.Message == responseMessage &&
+               move.X == x &&
+               move.Y == y &&
+               move.ScoreX == scoreX &&
+               move.ScoreO == scoreO;
+    }
+
+    private async Task WaitUntilMessageSent<TMessage>(Func<TMessage, bool> condition, string playerId, int timeout = 1000)
+    {
+        await WaitUntil(
+            () =>
+            {
+                return _webSocketManagerMock.Invocations
+                    .Where(x => x.Method.Name == "SendMessageAsync" && x.Arguments[0].ToString() == playerId)
+                    .Select(x => x.Arguments[1])
+                    .OfType<TMessage>()
+                    .Any(message => condition(message));
+            },
+            timeout);
     }
 }
