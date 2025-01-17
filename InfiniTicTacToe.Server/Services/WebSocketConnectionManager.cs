@@ -12,8 +12,7 @@ public sealed record WebsocketMessageEventArgs(string Message, string SocketId);
 
 public sealed record WebsocketConnectionEventArgs(string SocketId);
 
-public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logger)
-    : IWebSocketConnectionManager
+public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logger) : IWebSocketConnectionManager
 {
     private readonly ConcurrentDictionary<string, UserInfo> _userInfo = new();
 
@@ -53,7 +52,7 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 var result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancellationToken);
                 if (result.MessageType == WebSocketMessageType.Close)
                 {
-                    await RemoveSocket(id);
+                    await RemoveSocket(id, cancellationToken);
                     socketFinishedTcs.SetResult(result);
                     return;
                 }
@@ -70,10 +69,37 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
             {
                 logger.LogError(ex, "Error receiving message");
                 socketFinishedTcs.SetException(ex);
+                return;
             }
         }
 
-        await RemoveSocket(id);
+        await RemoveSocket(id, cancellationToken);
+    }
+
+    public void AddSocket(string socketId, WebSocket socket)
+    {
+        var userInfo = new UserInfo(socketId, "Anonymous", DateTimeOffset.UtcNow, socket);
+        _userInfo.TryAdd(socketId, userInfo);
+        ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(socketId));
+    }
+
+    public WebSocket? GetSocketById(string socketId)
+    {
+        if (_userInfo.TryGetValue(socketId, out var userInfo))
+        {
+            return userInfo.WebSocket;
+        }
+
+        return null;
+    }
+
+    public async Task RemoveSocket(string? socketId, CancellationToken cancellationToken)
+    {
+        if (socketId != null && _userInfo.TryRemove(socketId, out var userInfo))
+        {
+            await userInfo.WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketManager", cancellationToken);
+            ConnectionClosed?.Invoke(this, new WebsocketConnectionEventArgs(socketId));
+        }
     }
 
     protected virtual void OnMessageReceived(string message, string socketId)
