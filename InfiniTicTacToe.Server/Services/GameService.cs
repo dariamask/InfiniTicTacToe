@@ -33,6 +33,10 @@ public sealed class Game(string id)
     public int ScoreO { get; set; }
 }
 
+public sealed record GameStatistics(int Games, int Players, IReadOnlyCollection<GameScore> GameScores);
+
+public sealed record GameScore(int X, int O);
+
 public sealed class GameService : IDisposable
 {
     internal const int MaxX = 100;
@@ -66,6 +70,14 @@ public sealed class GameService : IDisposable
         _webSocketManager.MessageReceived -= OnMessageReceived;
         _webSocketManager.ConnectionReceived -= OnConnectionReceived;
         _webSocketManager.ConnectionClosed -= OnConnectionClosed;
+    }
+
+    public GameStatistics GetStats()
+    {
+        return new GameStatistics(
+            _games.Count,
+            _games.Values.SelectMany(g => g.Players.Values).Count(),
+            _games.Values.Select(g => new GameScore(g.ScoreX, g.ScoreO)).ToList());
     }
 
     private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
