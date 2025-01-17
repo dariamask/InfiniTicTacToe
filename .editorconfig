@@ -280,16 +280,22 @@ dotnet_diagnostic.SA1124.severity = none
 dotnet_diagnostic.SA1200.severity = none
 #[SA1201] A interface should not follow a class
 dotnet_diagnostic.SA1201.severity = none
+#[SA1204] A static element is positioned beneath an instance element.
+dotnet_diagnostic.SA1204.severity = none
 #[SA1309] Field name should not begin with an underscore
 dotnet_diagnostic.SA1309.severity = none
 #[SA1310] Field name should not contain an underscore
 dotnet_diagnostic.SA1310.severity = none
 #[SA1402] File may only contain a single type
 dotnet_diagnostic.SA1402.severity = none
+#[SA1512] SingleLineCommentsMustNotBeFollowedByBlankLine
+dotnet_diagnostic.SA1512.severity = none
 #[SA1600] Elements should be documented
 dotnet_diagnostic.SA1600.severity = none
 #SA1601 Partial Elements Must Be Documented
 dotnet_diagnostic.SA1601.severity = none
+#SA1602 Enumeration Items Must Be Documented
+dotnet_diagnostic.SA1602.severity = none
 #[SA1614] Element parameter documentation should have text
 dotnet_diagnostic.SA1614.severity = none
 #[SA1616] Element return value documentation should have text

@@ -8,29 +8,31 @@ public enum GameStatus
 {
     Pending,
     InProgress,
-    Finished
+    Finished,
 }
 
 public sealed record Player(string Id, char Symbol, string Nickname);
 
-public sealed class Game
+public sealed class Game(string id)
 {
-    public string Id { get; }
-    public ConcurrentDictionary<string, Player> Players { get; } = new();
-    public GameStatus Status { get; set; }
-    public HashSet<(int, int)> UsedPositions { get; } = new();
-    // вместо массива чаров - словарик, в котором ключ это котреж координат ху, а значение объект (статус ячейки - х, о, порядковый номер хода, флаг IsCrossedOut). 
-    public char[,] Board { get; } = new char[GameService.MaxX, GameService.MaxY];
-    public string? CurrentPlayerId { get; set; }
-    public int ScoreX { get; set; }
-    public int ScoreO { get; set; }
+    public string Id { get; } = id;
 
-    public Game(string id)
-    {
-        Id = id;
-        Status = GameStatus.Pending;
-    }
+    public ConcurrentDictionary<string, Player> Players { get; } = new();
+
+    public GameStatus Status { get; set; } = GameStatus.Pending;
+
+    public HashSet<(int X, int Y)> UsedPositions { get; } = [];
+
+    // вместо массива чаров - словарик, в котором ключ это котреж координат ху, а значение объект (статус ячейки - х, о, порядковый номер хода, флаг IsCrossedOut).
+    public char[,] Board { get; } = new char[GameService.MaxX, GameService.MaxY];
+
+    public string? CurrentPlayerId { get; set; }
+
+    public int ScoreX { get; set; }
+
+    public int ScoreO { get; set; }
 }
+
 public sealed class GameService : IDisposable
 {
     internal const int MaxX = 100;
@@ -38,7 +40,8 @@ public sealed class GameService : IDisposable
 
     private readonly IWebSocketConnectionManager _webSocketManager;
     private readonly ILogger<GameService> _logger;
-    private readonly ConcurrentDictionary<string, Player> _players = new();
+
+    // private readonly ConcurrentDictionary<string, Player> _players = new();
     private readonly ConcurrentDictionary<string, Game> _games = new();
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
@@ -114,6 +117,7 @@ public sealed class GameService : IDisposable
                     {
                         await _webSocketManager.SendMessageAsync(playerId, new GameEndMessage(game.ScoreX, game.ScoreO));
                     }
+
                     game.Status = GameStatus.Finished;
                 }
 
@@ -200,7 +204,7 @@ public sealed class GameService : IDisposable
                 var (success, responseMessage) = MakeMove(game, e.SocketId, moveMessage.X, moveMessage.Y);
                 var (scoreX, scoreO) = GetScores(game);
                 var moveMessageResult = new MoveResultMessage(success, responseMessage, moveMessage.X, moveMessage.Y, scoreX, scoreO, false);
-                
+
                 foreach (var playerId in game.Players.Keys)
                 {
                     if (playerId == game.CurrentPlayerId)
@@ -216,9 +220,9 @@ public sealed class GameService : IDisposable
         }
     }
 
-    private bool IsPlayerTurn(Game game, string id) => game.CurrentPlayerId == id;
+    private static bool IsPlayerTurn(Game game, string id) => game.CurrentPlayerId == id;
 
-    private (bool success, string message) MakeMove(Game game, string id, int x, int y)
+    private static (bool Success, string Message) MakeMove(Game game, string id, int x, int y)
     {
         if (game.Status != GameStatus.InProgress)
         {
@@ -260,14 +264,14 @@ public sealed class GameService : IDisposable
         return (true, "Move accepted.");
     }
 
-    private (int scoreX, int scoreO) GetScores(Game game)
+    private static (int ScoreX, int ScoreO) GetScores(Game game)
     {
         int scoreX = game.Players.Values.Count(p => p.Symbol == 'X');
         int scoreO = game.Players.Values.Count(p => p.Symbol == 'O');
         return (scoreX, scoreO);
     }
 
-    private bool CheckWin(Game game, int x, int y, char symbol)
+    private static bool CheckWin(Game game, int x, int y, char symbol)
     {
         return CheckDirection(game, x, y, symbol, 1, 0) || // Horizontal
                CheckDirection(game, x, y, symbol, 0, 1) || // Vertical
@@ -275,12 +279,12 @@ public sealed class GameService : IDisposable
                CheckDirection(game, x, y, symbol, 1, -1);  // Diagonal /
     }
 
-    private bool CheckDirection(Game game, int x, int y, char symbol, int dx, int dy)
+    private static bool CheckDirection(Game game, int x, int y, char symbol, int dx, int dy)
     {
         int count = 1;
         for (int i = 1; i < 5; i++)
         {
-            if (IsValidPosition(x + i * dx, y + i * dy) && game.Board[x + i * dx, y + i * dy] == symbol)
+            if (IsValidPosition(x + (i * dx), y + (i * dy)) && game.Board[x + (i * dx), y + (i * dy)] == symbol)
             {
                 count++;
             }
@@ -292,7 +296,7 @@ public sealed class GameService : IDisposable
 
         for (int i = 1; i < 5; i++)
         {
-            if (IsValidPosition(x - i * dx, y - i * dy) && game.Board[x - i * dx, y - i * dy] == symbol)
+            if (IsValidPosition(x - (i * dx), y - (i * dy)) && game.Board[x - (i * dx), y - (i * dy)] == symbol)
             {
                 count++;
             }
@@ -306,5 +310,4 @@ public sealed class GameService : IDisposable
     }
 
     private static bool IsValidPosition(int x, int y) => x >= 0 && y >= 0 && x < MaxX && y < MaxY;
-
 }

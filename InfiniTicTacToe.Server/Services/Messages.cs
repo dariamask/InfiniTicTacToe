@@ -1,4 +1,4 @@
-﻿namespace InfiniTicTacToe.Server.Services;
+namespace InfiniTicTacToe.Server.Services;
 
 public sealed record TypedMessage(MessageType Type);
 
@@ -8,7 +8,7 @@ public sealed record ServerHelloMessage(MessageType Type = MessageType.ServerHel
 // client -> server
 public sealed record ClientHelloMessage(string Nickname, MessageType Type = MessageType.ClientHello);
 
-// client -> server 
+// client -> server
 public sealed record ReadyMessage(MessageType Type = MessageType.Ready);
 
 // server -> client
@@ -46,4 +46,3 @@ public enum PlayerSide
     X,
     O,
 }
-
