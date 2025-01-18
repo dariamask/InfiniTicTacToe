@@ -56,11 +56,21 @@ export class MoveMessage extends TypedMessage {
 export class StartMessage extends TypedMessage {
   side: PlayerSide;
   yourTurn: boolean;
+  nicknameX: string;
+  nicknameO: string;
 
-  constructor(side: PlayerSide, yourTurn: boolean) {
+  constructor(side: PlayerSide, yourTurn: boolean, nicknameX: string, nicknameO: string) {
     super(MessageType.Start);
     this.side = side;
     this.yourTurn = yourTurn;
+    this.nicknameX = nicknameX;
+    this.nicknameO = nicknameO;
+  }
+}
+
+export class ClientEndMessage extends TypedMessage {
+  constructor() {
+    super(MessageType.Ready);
   }
 }
 
