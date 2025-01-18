@@ -7,6 +7,8 @@ export class Cell {
   value = '';
   row = 0;
   col = 0;
+  isCrossedOut = false;
+  isLastMove = false;
 
   constructor(row: number, col: number) {
     this.row = row;
@@ -81,6 +83,12 @@ export class BoardComponent {
     const cell = this.rows[message.x].cells[message.y];
     this.yourTurn = message.yourTurn;
 
+    this.rows.forEach(row => {
+      row.cells.forEach(cell => {
+        cell.isLastMove = false;
+      });
+    });
+
     cell.value = message.yourTurn
       ? this.playerSide === PlayerSide.X
         ? 'O'
@@ -88,5 +96,12 @@ export class BoardComponent {
       : this.playerSide === PlayerSide.X
         ? 'X'
         : 'O';
+      cell.isLastMove = true;
+
+    if (message.crossedOutCells)
+      message.crossedOutCells.forEach(crossedOutCell => {
+        // toggle crossed out cell style
+        this.rows[crossedOutCell.x].cells[crossedOutCell.y].isCrossedOut = true;
+      });
   }
 }
