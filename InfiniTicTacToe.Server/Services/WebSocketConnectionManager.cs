@@ -58,19 +58,6 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
                 else
                 {
                     var message = Encoding.UTF8.GetString(buffer, 0, result.Count);
-
-                    // таск ран добавить, внутри создавать скоуп. Из АйсервисСкоупФактори, резолвить диспатчера и передавать ему сообщение, что бы он дальше его обработал.
-                    var typedMessage = JsonSerializer.Deserialize<TypedMessage>(message, _jsonSerializerOptions);
-
-                    if (typedMessage?.Type == MessageType.ClientHello)
-                    {
-                        var helloMessage = JsonSerializer.Deserialize<ClientHelloMessage>(message, _jsonSerializerOptions);
-                        if (helloMessage != null)
-                        {
-                            AddSocket(id, socket, helloMessage.Nickname);
-                        }
-                    }
-
                     OnMessageReceived(message, id);
                 }
             }
@@ -87,7 +74,7 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
 
     public void AddSocket(string socketId, WebSocket socket)
     {
-        var userInfo = new UserInfo(socketId, "Anonymous", DateTimeOffset.UtcNow, socket);
+        var userInfo = new UserInfo(socketId, DateTimeOffset.UtcNow, socket);
         _userInfo.TryAdd(socketId, userInfo);
         ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(socketId));
     }
@@ -114,21 +101,5 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
     protected virtual void OnMessageReceived(string message, string socketId)
     {
         MessageReceived?.Invoke(this, new(message, socketId));
-    }
-
-    private void AddSocket(string id, WebSocket socket, string nickname)
-    {
-        var userInfo = new UserInfo(id, nickname, DateTimeOffset.UtcNow, socket);
-        _userInfo.TryAdd(id, userInfo);
-        ConnectionReceived?.Invoke(this, new WebsocketConnectionEventArgs(id));
-    }
-
-    private async Task RemoveSocket(string id)
-    {
-        if (_userInfo.TryRemove(id, out var userInfo))
-        {
-            await userInfo.WebSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closed by the WebSocketManager", CancellationToken.None);
-            ConnectionClosed?.Invoke(this, new WebsocketConnectionEventArgs(id));
-        }
     }
 }
