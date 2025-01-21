@@ -1,8 +1,17 @@
 <div class="sidebar">
+  <div class="score">
+    <h3>Score</h3>
+    <p>{{ mySide }} | {{ nickname }}: {{ myScore }}</p>
+    <p>{{ otherPlayerSide }} | {{ otherPlayerName }}: {{ otherPlayerScore }}</p>
+  </div>
+  <div class="status">
+    <h3>Current Status</h3>
+    <p>{{ gameStatus }}</p>
+    <p>{{ (isYourTurn ? "Your turn!" : "Waiting other player...")}}</p>
+  </div>
   <input type="text" [(ngModel)]="nickname"
          (input)="onNicknameChange()"
          placeholder="Enter your nickname" />
   <button (click)="onStartGame()">Start Game</button>
   <button (click)="onEndGame()">End Game</button>
 </div>
-

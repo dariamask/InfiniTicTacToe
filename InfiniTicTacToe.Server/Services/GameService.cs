@@ -240,8 +240,8 @@ public sealed class GameService : IDisposable
                 pendingGame.PlayerO.CurrentGame = pendingGame;
                 pendingGame.CurrentPlayerId = pendingGame.PlayerX.Id;
 
-                await _webSocketManager.SendMessageAsync(pendingGame.PlayerX.Id, new StartMessage(PlayerSide.X, YourTurn: true));
-                await _webSocketManager.SendMessageAsync(pendingGame.PlayerO.Id, new StartMessage(PlayerSide.O, YourTurn: false));
+                await _webSocketManager.SendMessageAsync(pendingGame.PlayerX.Id, new StartMessage(PlayerSide.X, YourTurn: true, pendingGame.PlayerX.Nickname, pendingGame.PlayerO.Nickname));
+                await _webSocketManager.SendMessageAsync(pendingGame.PlayerO.Id, new StartMessage(PlayerSide.O, YourTurn: false, pendingGame.PlayerX.Nickname, pendingGame.PlayerO.Nickname));
                 return;
             }
 

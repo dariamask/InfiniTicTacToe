@@ -15,7 +15,7 @@ public sealed record ReadyMessage(MessageType Type = MessageType.Ready);
 public sealed record ReadyMessageAck(MessageType Type = MessageType.ReadyAck);
 
 // server -> client
-public sealed record StartMessage(PlayerSide Side, bool YourTurn, MessageType Type = MessageType.Start);
+public sealed record StartMessage(PlayerSide Side, bool YourTurn, string NicknameX, string NicknameO, MessageType Type = MessageType.Start);
 
 // client -> server
 public sealed record MoveMessage(int X, int Y, MessageType Type = MessageType.Move);
