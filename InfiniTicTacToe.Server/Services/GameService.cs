@@ -115,14 +115,12 @@ public sealed class GameService : IDisposable
         _logger = logger;
 
         _webSocketManager.MessageReceived += OnMessageReceived;
-        _webSocketManager.ConnectionReceived += OnConnectionReceived;
         _webSocketManager.ConnectionClosed += OnConnectionClosed;
     }
 
     public void Dispose()
     {
         _webSocketManager.MessageReceived -= OnMessageReceived;
-        _webSocketManager.ConnectionReceived -= OnConnectionReceived;
         _webSocketManager.ConnectionClosed -= OnConnectionClosed;
     }
 
@@ -134,30 +132,6 @@ public sealed class GameService : IDisposable
             _games.Count,
             _players.Count,
             _games.Values.Select(g => new GameScore(g.Id, g.ScoreX, g.ScoreO)).ToList());
-    }
-
-    private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
-    {
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await OnConnectionReceivedImpl(e);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing connection");
-            }
-        });
-    }
-
-    private Task OnConnectionReceivedImpl(WebsocketConnectionEventArgs e)
-    {
-        _logger.LogInformation("Connection received: {SocketId}", e.SocketId);
-        return Task.CompletedTask;
-
-        // skip sending hello. it should be sent only after the player sends hello message
-        // await _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage());
     }
 
     private void OnConnectionClosed(object? sender, WebsocketConnectionEventArgs e)
@@ -177,30 +151,36 @@ public sealed class GameService : IDisposable
 
     private async Task OnConnectionClosedImpl(WebsocketConnectionEventArgs e)
     {
-        foreach (var game in _games.Values)
+        var player = _players.TryGetValue(e.SocketId, out var found)
+            ? found
+            : null;
+
+        if (player is null)
+            return;
+
+        _players.TryRemove(e.SocketId, out _);
+
+        var game = player.CurrentGame;
+        if (game == null)
+            return;
+
+        game.CurrentPlayerId = null;
+
+        // TODO #13: Implement game end logic
+        if (game.Status == GameStatus.InProgress)
         {
-            if (game.PlayerX?.Id == e.SocketId || game.PlayerO?.Id == e.SocketId)
-            {
-                game.CurrentPlayerId = null;
+            _ = game.TryFinishGame();
 
-                if (game.Status == GameStatus.InProgress)
-                {
-                    _ = game.TryFinishGame();
+            if (game.PlayerX?.Id == e.SocketId)
+                await _webSocketManager.SendMessageAsync(game.PlayerX.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
 
-                    if (game.PlayerX?.Id == e.SocketId)
-                        await _webSocketManager.SendMessageAsync(game.PlayerX.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
+            if (game.PlayerO?.Id == e.SocketId)
+                await _webSocketManager.SendMessageAsync(game.PlayerO.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
+        }
 
-                    if (game.PlayerO?.Id == e.SocketId)
-                        await _webSocketManager.SendMessageAsync(game.PlayerO.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
-                }
-
-                if (game.PlayerX == null && game.PlayerO == null)
-                {
-                    _games.TryRemove(game.Id, out _);
-                }
-
-                break;
-            }
+        if (game.PlayerX == null && game.PlayerO == null)
+        {
+            _games.TryRemove(game.Id, out _);
         }
     }
 
@@ -282,10 +262,18 @@ public sealed class GameService : IDisposable
         {
             var moveMessage = JsonSerializer.Deserialize<MoveMessage>(e.Message, _jsonSerializerOptions)!;
 
-            var game = _games.Values.FirstOrDefault(g => g.PlayerX?.Id == e.SocketId || g.PlayerO?.Id == e.SocketId);
+            if (!_players.TryGetValue(e.SocketId, out var player))
+            {
+                _logger.LogError("Player not found for socket {SocketId}", e.SocketId);
+                await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Player not found.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
+                return;
+            }
+
+            var game = player.CurrentGame;
             if (game == null)
             {
                 _logger.LogError("Game not found for player {SocketId}", e.SocketId);
+                await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Game not found.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
                 return;
             }
 
@@ -294,11 +282,6 @@ public sealed class GameService : IDisposable
                 await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Game is not in progress.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
                 return;
             }
-
-            var player = game.PlayerX?.Id == e.SocketId
-                ? game.PlayerX
-                : game.PlayerO;
-            Debug.Assert(player != null, "Player is null");
 
             var otherPlayer = game.PlayerX?.Id == e.SocketId
                 ? game.PlayerO
