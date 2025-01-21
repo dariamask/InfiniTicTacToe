@@ -12,6 +12,9 @@ public sealed record ClientHelloMessage(string Nickname, MessageType Type = Mess
 public sealed record ReadyMessage(MessageType Type = MessageType.Ready);
 
 // server -> client
+public sealed record ReadyMessageAck(MessageType Type = MessageType.ReadyAck);
+
+// server -> client
 public sealed record StartMessage(PlayerSide Side, bool YourTurn, MessageType Type = MessageType.Start);
 
 // client -> server
@@ -25,6 +28,7 @@ public sealed record MoveResultMessage(
     int Y,
     int ScoreX,
     int ScoreO,
+    IReadOnlyCollection<Cell> CrossedOutCells,
     bool YourTurn,
     MessageType Type = MessageType.MoveResult);
 
@@ -35,6 +39,7 @@ public enum MessageType
     ServerHello,
     ClientHello,
     Ready,
+    ReadyAck,
     Start,
     Move,
     MoveResult,

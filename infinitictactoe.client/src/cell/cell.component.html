@@ -1,3 +1,5 @@
-<div class="cell" (click)="onCellClick()">
+<div class="cell"
+     (click)="onCellClick()"
+     [ngClass]="{'last-move': isLastMove, 'crossed-out': isCrossedOut}">
   {{ value }}
 </div>

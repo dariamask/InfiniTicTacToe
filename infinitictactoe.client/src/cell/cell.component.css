@@ -20,3 +20,11 @@
   cursor: pointer;
   pointer-events: auto;
 }
+
+.last-move {
+  background-color: green;
+}
+
+.crossed-out {
+  text-decoration: line-through;
+}

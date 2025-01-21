@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -11,31 +12,84 @@ public enum GameStatus
     Finished,
 }
 
-public sealed record Player(string Id, char Symbol, string Nickname);
-
-public sealed class Game(string id)
+public sealed record Player(string Id, string Nickname)
 {
-    public string Id { get; } = id;
+    public Game? CurrentGame { get; set; }
 
-    public ConcurrentDictionary<string, Player> Players { get; } = new();
+    public Side? Side { get; set; }
+}
 
-    public GameStatus Status { get; set; } = GameStatus.Pending;
+public enum Side
+{
+    X,
+    O,
+}
 
-    public HashSet<(int X, int Y)> UsedPositions { get; } = [];
+public sealed record Cell(int X, int Y, Side Side)
+{
+    public int X { get; init; } = X;
+
+    public int Y { get; init; } = Y;
+
+    public Side Side { get; init; } = Side;
+
+    public int? TurnNumber { get; set; }
+
+    public bool CrossedOut { get; set; }
+
+    public char Symbol => Side switch
+    {
+        Side.X => 'X',
+        Side.O => 'O',
+        _ => ' ',
+    };
+}
+
+public sealed record Game(string Id)
+{
+    private int _statusInt = (int)GameStatus.Pending;
+
+    public string Id { get; } = Id;
+
+    public Player? PlayerX { get; set; }
+
+    public Player? PlayerO { get; set; }
+
+    public GameStatus Status => (GameStatus)_statusInt;
+
+    // public HashSet<(int X, int Y)> UsedPositions { get; } = [];
 
     // вместо массива чаров - словарик, в котором ключ это котреж координат ху, а значение объект (статус ячейки - х, о, порядковый номер хода, флаг IsCrossedOut).
-    public char[,] Board { get; } = new char[GameService.MaxX, GameService.MaxY];
+    // public char[,] Board { get; } = new char[GameService.MaxX, GameService.MaxY];
+
+    public ConcurrentDictionary<(int X, int Y), Cell> Board { get; } = new();
 
     public string? CurrentPlayerId { get; set; }
 
     public int ScoreX { get; set; }
 
     public int ScoreO { get; set; }
+
+    public bool TryStartGame()
+    {
+        return Interlocked.CompareExchange(
+            location1: ref _statusInt,
+            value: (int)GameStatus.InProgress,
+            comparand: (int)GameStatus.Pending) == (int)GameStatus.Pending;
+    }
+
+    public bool TryFinishGame()
+    {
+        return Interlocked.CompareExchange(
+            location1: ref _statusInt,
+            value: (int)GameStatus.Finished,
+            comparand: (int)GameStatus.InProgress) == (int)GameStatus.InProgress;
+    }
 }
 
 public sealed record GameStatistics(int Games, int Players, IReadOnlyCollection<GameScore> GameScores);
 
-public sealed record GameScore(int X, int O);
+public sealed record GameScore(string GameId, int X, int O);
 
 public sealed class GameService : IDisposable
 {
@@ -45,8 +99,8 @@ public sealed class GameService : IDisposable
     private readonly IWebSocketConnectionManager _webSocketManager;
     private readonly ILogger<GameService> _logger;
 
-    // private readonly ConcurrentDictionary<string, Player> _players = new();
     private readonly ConcurrentDictionary<string, Game> _games = new();
+    private readonly ConcurrentDictionary<string, Player> _players = new();
 
     private readonly JsonSerializerOptions _jsonSerializerOptions = new()
     {
@@ -61,43 +115,23 @@ public sealed class GameService : IDisposable
         _logger = logger;
 
         _webSocketManager.MessageReceived += OnMessageReceived;
-        _webSocketManager.ConnectionReceived += OnConnectionReceived;
         _webSocketManager.ConnectionClosed += OnConnectionClosed;
     }
 
     public void Dispose()
     {
         _webSocketManager.MessageReceived -= OnMessageReceived;
-        _webSocketManager.ConnectionReceived -= OnConnectionReceived;
         _webSocketManager.ConnectionClosed -= OnConnectionClosed;
     }
 
     public GameStatistics GetStats()
     {
+            // _games.Values.SelectMany(g => g.Players.Values).Count(),
+
         return new GameStatistics(
             _games.Count,
-            _games.Values.SelectMany(g => g.Players.Values).Count(),
-            _games.Values.Select(g => new GameScore(g.ScoreX, g.ScoreO)).ToList());
-    }
-
-    private void OnConnectionReceived(object? sender, WebsocketConnectionEventArgs e)
-    {
-        _ = Task.Run(async () =>
-        {
-            try
-            {
-                await OnConnectionReceivedImpl(e);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error processing connection");
-            }
-        });
-    }
-
-    private async Task OnConnectionReceivedImpl(WebsocketConnectionEventArgs e)
-    {
-        await _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage());
+            _players.Count,
+            _games.Values.Select(g => new GameScore(g.Id, g.ScoreX, g.ScoreO)).ToList());
     }
 
     private void OnConnectionClosed(object? sender, WebsocketConnectionEventArgs e)
@@ -117,29 +151,36 @@ public sealed class GameService : IDisposable
 
     private async Task OnConnectionClosedImpl(WebsocketConnectionEventArgs e)
     {
-        foreach (var game in _games.Values)
+        var player = _players.TryGetValue(e.SocketId, out var found)
+            ? found
+            : null;
+
+        if (player is null)
+            return;
+
+        _players.TryRemove(e.SocketId, out _);
+
+        var game = player.CurrentGame;
+        if (game == null)
+            return;
+
+        game.CurrentPlayerId = null;
+
+        // TODO #13: Implement game end logic
+        if (game.Status == GameStatus.InProgress)
         {
-            if (game.Players.TryRemove(e.SocketId, out var player))
-            {
-                game.CurrentPlayerId = null;
+            _ = game.TryFinishGame();
 
-                if (game.Status == GameStatus.InProgress)
-                {
-                    foreach (var playerId in game.Players.Keys)
-                    {
-                        await _webSocketManager.SendMessageAsync(playerId, new GameEndMessage(game.ScoreX, game.ScoreO));
-                    }
+            if (game.PlayerX?.Id == e.SocketId)
+                await _webSocketManager.SendMessageAsync(game.PlayerX.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
 
-                    game.Status = GameStatus.Finished;
-                }
+            if (game.PlayerO?.Id == e.SocketId)
+                await _webSocketManager.SendMessageAsync(game.PlayerO.Id, new GameEndMessage(game.ScoreX, game.ScoreO));
+        }
 
-                if (game.Players.IsEmpty)
-                {
-                    _games.TryRemove(game.Id, out _);
-                }
-
-                break;
-            }
+        if (game.PlayerX == null && game.PlayerO == null)
+        {
+            _games.TryRemove(game.Id, out _);
         }
     }
 
@@ -162,143 +203,196 @@ public sealed class GameService : IDisposable
     private async Task OnMessageReceivedImpl(WebsocketMessageEventArgs e)
     {
         var messageData = JsonSerializer.Deserialize<TypedMessage>(e.Message, _jsonSerializerOptions);
-        if (messageData != null)
+        if (messageData == null)
+            return;
+
+        if (messageData.Type == MessageType.ClientHello)
         {
-            if (messageData.Type == MessageType.ClientHello)
+            var helloMessage = JsonSerializer.Deserialize<ClientHelloMessage>(e.Message, _jsonSerializerOptions)!;
+
+            _players.AddOrUpdate(
+                key: e.SocketId,
+                addValueFactory: _ => new Player(e.SocketId, helloMessage.Nickname),
+                updateValueFactory: (_, p) => p with { Nickname = helloMessage.Nickname });
+
+            await _webSocketManager.SendMessageAsync(e.SocketId, new ServerHelloMessage());
+
+            // QuestionForAndo: получается, hello теперь отправляем только одному игроку,
+            // т.к. у него нет ещё нет оппонента.
+            // await _webSocketManager.SendMessageAsync(e.SocketId, new StartMessage(PlayerSide.X, true));
+
+            return;
+        }
+
+        if (messageData.Type == MessageType.Ready)
+        {
+            var player = _players.TryGetValue(e.SocketId, out var found)
+                ? found
+                : throw new InvalidOperationException("Player not found.");
+
+            var pendingGame = _games.Values.FirstOrDefault(g => g.Status == GameStatus.Pending);
+            if (pendingGame != null && pendingGame.TryStartGame())
             {
-                // QuestionForAndo: получается, hello теперь отправляем только одному игроку,
-                // т.к. у него нет ещё нет оппонента.
-                await _webSocketManager.SendMessageAsync(e.SocketId, new StartMessage(PlayerSide.X, true));
+                Debug.Assert(pendingGame.PlayerX != null, "Player X is null");
+
+                pendingGame.PlayerO = player;
+                pendingGame.PlayerO.Side = Side.O;
+                pendingGame.PlayerO.CurrentGame = pendingGame;
+                pendingGame.CurrentPlayerId = pendingGame.PlayerX.Id;
+
+                await _webSocketManager.SendMessageAsync(pendingGame.PlayerX.Id, new StartMessage(PlayerSide.X, YourTurn: true));
+                await _webSocketManager.SendMessageAsync(pendingGame.PlayerO.Id, new StartMessage(PlayerSide.O, YourTurn: false));
+                return;
             }
-            else if (messageData.Type == MessageType.Ready)
+
+            var newGame = new Game(Guid.NewGuid().ToString())
             {
-                var pendingGame = _games.Values.FirstOrDefault(g => g.Status == GameStatus.Pending);
-                if (pendingGame != null)
-                {
-                    char symbol = pendingGame.Players.IsEmpty ? 'X' : 'O';
-                    pendingGame.Players.TryAdd(e.SocketId, new Player(e.SocketId, symbol, "nickname"));
-                    if (pendingGame.Players.Count == 2)
-                    {
-                        pendingGame.Status = GameStatus.InProgress;
-                        pendingGame.CurrentPlayerId = pendingGame.Players.Where(x => x.Value.Symbol == 'X').Select(x => x.Key).FirstOrDefault()
-                            ?? throw new InvalidOperationException("Player X not found.");
+                PlayerX = player,
+            };
 
-                        var playerX = pendingGame.Players.Where(x => x.Value.Symbol == 'X').Select(x => x.Key).FirstOrDefault()
-                            ?? throw new InvalidOperationException("Player X not found.");
-                        var playerO = pendingGame.Players.Where(x => x.Value.Symbol == 'O').Select(x => x.Key).FirstOrDefault()
-                            ?? throw new InvalidOperationException("Player O not found.");
+            newGame.PlayerX.Side = Side.X;
+            newGame.PlayerX.CurrentGame = newGame;
+            _games.TryAdd(newGame.Id, newGame);
 
-                        await _webSocketManager.SendMessageAsync(playerX, new StartMessage(PlayerSide.X, true));
-                        await _webSocketManager.SendMessageAsync(playerO, new StartMessage(PlayerSide.O, false));
+            await _webSocketManager.SendMessageAsync(e.SocketId, new ReadyMessageAck());
+            return;
+        }
 
-                        pendingGame.Status = GameStatus.InProgress;
-                    }
-                }
-                else
-                {
-                    // TODO: передать никнейм
-                    var newGame = new Game(Guid.NewGuid().ToString());
-                    newGame.Players.TryAdd(e.SocketId, new Player(e.SocketId, 'X', "nickname"));
-                    _games.TryAdd(newGame.Id, newGame);
-                }
-            }
-            else if (messageData.Type == MessageType.Move)
+        if (messageData.Type == MessageType.Move)
+        {
+            var moveMessage = JsonSerializer.Deserialize<MoveMessage>(e.Message, _jsonSerializerOptions)!;
+
+            if (!_players.TryGetValue(e.SocketId, out var player))
             {
-                var moveMessage = JsonSerializer.Deserialize<MoveMessage>(e.Message, _jsonSerializerOptions)!;
-
-                var game = _games.Values.FirstOrDefault(g => g.Players.ContainsKey(e.SocketId));
-                if (game == null)
-                {
-                    _logger.LogError("Game not found for player {SocketId}", e.SocketId);
-                    return;
-                }
-
-                var (success, responseMessage) = MakeMove(game, e.SocketId, moveMessage.X, moveMessage.Y);
-                var (scoreX, scoreO) = GetScores(game);
-                var moveMessageResult = new MoveResultMessage(success, responseMessage, moveMessage.X, moveMessage.Y, scoreX, scoreO, false);
-
-                foreach (var playerId in game.Players.Keys)
-                {
-                    if (playerId == game.CurrentPlayerId)
-                    {
-                        await _webSocketManager.SendMessageAsync(playerId, moveMessageResult with { YourTurn = true });
-                    }
-                    else
-                    {
-                        await _webSocketManager.SendMessageAsync(playerId, moveMessageResult);
-                    }
-                }
+                _logger.LogError("Player not found for socket {SocketId}", e.SocketId);
+                await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Player not found.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
+                return;
             }
+
+            var game = player.CurrentGame;
+            if (game == null)
+            {
+                _logger.LogError("Game not found for player {SocketId}", e.SocketId);
+                await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Game not found.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
+                return;
+            }
+
+            if (game.Status != GameStatus.InProgress)
+            {
+                await _webSocketManager.SendMessageAsync(e.SocketId, new MoveResultMessage(false, "Game is not in progress.", moveMessage.X, moveMessage.Y, 0, 0, [], false));
+                return;
+            }
+
+            var otherPlayer = game.PlayerX?.Id == e.SocketId
+                ? game.PlayerO
+                : game.PlayerX;
+            Debug.Assert(otherPlayer != null, "Other player is null");
+
+            var moveResult = MakeMove(game, player, moveMessage.X, moveMessage.Y);
+            if (moveResult.IsAccepted)
+                game.CurrentPlayerId = otherPlayer.Id;
+
+            var moveMessageResult = new MoveResultMessage(
+                Success: moveResult.IsAccepted,
+                Message: moveResult.ErrorMessage,
+                X: moveMessage.X,
+                Y: moveMessage.Y,
+                ScoreX: game.ScoreX,
+                ScoreO: game.ScoreO,
+                CrossedOutCells: moveResult.CrossedOutCells,
+                YourTurn: false);
+
+            await _webSocketManager.SendMessageAsync(
+                player.Id,
+                moveMessageResult with { YourTurn = IsPlayerTurn(game, player.Id) });
+
+            await _webSocketManager.SendMessageAsync(
+                otherPlayer.Id,
+                moveMessageResult with { YourTurn = IsPlayerTurn(game, otherPlayer.Id) });
         }
     }
 
     private static bool IsPlayerTurn(Game game, string id) => game.CurrentPlayerId == id;
 
-    private static (bool Success, string Message) MakeMove(Game game, string id, int x, int y)
+    private static MoveResult MakeMove(Game game, Player player, int x, int y)
     {
         if (game.Status != GameStatus.InProgress)
-        {
-            return (false, "Game is not in progress.");
-        }
+            return new(false, false, [], "Game is not in progress.");
 
-        if (!IsPlayerTurn(game, id))
-        {
-            return (false, "It's not your turn.");
-        }
+        if (!IsPlayerTurn(game, player.Id))
+            return new(false, false, [], "It's not your turn.");
 
-        if (!IsValidPosition(x, y))
-        {
-            return (false, "Move out of bounds.");
-        }
+        if (!IsValidPosition((x, y)))
+            return new(false, false, [], "Move out of bounds.");
 
-        if (game.UsedPositions.Contains((x, y)))
-        {
-            return (false, "Position already used.");
-        }
+        var playerSide = player.Side ?? throw new InvalidOperationException("Player side is not set.");
 
-        var player = game.Players[id];
-        game.Board[x, y] = player.Symbol;
-        game.UsedPositions.Add((x, y));
+        var move = new Cell(x, y, playerSide);
+        var moveSuccess = game.Board.TryAdd((x, y), move);
 
-        if (CheckWin(game, x, y, player.Symbol))
+        if (!moveSuccess)
+            return new(false, false, [], "Position already used.");
+
+        var (isWin, crossedOutCells) = CheckWin(game, move, playerSide);
+        if (isWin)
         {
-            if (player.Symbol == 'X')
+            switch (player.Side)
             {
-                game.ScoreX++;
-            }
-            else
-            {
-                game.ScoreO++;
+                case Side.X:
+                    game.ScoreX++;
+                    break;
+                case Side.O:
+                    game.ScoreO++;
+                    break;
+                default:
+                    throw new InvalidOperationException($"Unknown side: {player.Side}");
             }
         }
 
-        game.CurrentPlayerId = game.Players.Keys.First(k => k != id);
-        return (true, "Move accepted.");
+        return new(true, isWin, crossedOutCells, "Move accepted.");
     }
 
-    private static (int ScoreX, int ScoreO) GetScores(Game game)
+    private sealed record MoveResult(bool IsAccepted, bool IsWin, IReadOnlyCollection<Cell> CrossedOutCells, string ErrorMessage);
+
+    private static (bool IsWin, IReadOnlyCollection<Cell> CrossedOutCells) CheckWin(Game game, Cell move, Side side)
     {
-        int scoreX = game.Players.Values.Count(p => p.Symbol == 'X');
-        int scoreO = game.Players.Values.Count(p => p.Symbol == 'O');
-        return (scoreX, scoreO);
+        // Horizontal --
+        if (CheckDirection(game, move, side, 1, 0, out var cells))
+            return (true, cells);
+
+        // Vertical |
+        if (CheckDirection(game, move, side, 0, 1, out cells))
+            return (true, cells);
+
+        // Diagonal \
+        if (CheckDirection(game, move, side, 1, 1, out cells))
+            return (true, cells);
+
+        // Diagonal /
+        if (CheckDirection(game, move, side, 1, -1, out cells))
+            return (true, cells);
+
+        return (false, []);
     }
 
-    private static bool CheckWin(Game game, int x, int y, char symbol)
+    private static bool CheckDirection(Game game, Cell move, Side side, int dx, int dy, out List<Cell> cellsToBeCrossedOut)
     {
-        return CheckDirection(game, x, y, symbol, 1, 0) || // Horizontal
-               CheckDirection(game, x, y, symbol, 0, 1) || // Vertical
-               CheckDirection(game, x, y, symbol, 1, 1) || // Diagonal \
-               CheckDirection(game, x, y, symbol, 1, -1);  // Diagonal /
-    }
+        var x = move.X;
+        var y = move.Y;
 
-    private static bool CheckDirection(Game game, int x, int y, char symbol, int dx, int dy)
-    {
-        int count = 1;
-        for (int i = 1; i < 5; i++)
+        var count = 1;
+        cellsToBeCrossedOut = [];
+
+        for (var i = 1; i < 5; i++)
         {
-            if (IsValidPosition(x + (i * dx), y + (i * dy)) && game.Board[x + (i * dx), y + (i * dy)] == symbol)
+            var position = (x + (i * dx), y + (i * dy));
+            if (IsValidPosition(position)
+                && game.Board.TryGetValue(position, out var cell)
+                && cell.Side == side
+                && !cell.CrossedOut)
             {
                 count++;
+                cellsToBeCrossedOut.Add(cell);
             }
             else
             {
@@ -306,11 +400,16 @@ public sealed class GameService : IDisposable
             }
         }
 
-        for (int i = 1; i < 5; i++)
+        for (var i = 1; i < 5; i++)
         {
-            if (IsValidPosition(x - (i * dx), y - (i * dy)) && game.Board[x - (i * dx), y - (i * dy)] == symbol)
+            var position = (x - (i * dx), y - (i * dy));
+            if (IsValidPosition(position)
+                && game.Board.TryGetValue(position, out var cell)
+                && cell.Side == side
+                && !cell.CrossedOut)
             {
                 count++;
+                cellsToBeCrossedOut.Add(cell);
             }
             else
             {
@@ -318,8 +417,19 @@ public sealed class GameService : IDisposable
             }
         }
 
-        return count >= 5;
+        // Cross out the winning cells, greedily if 6 or more cells in a row
+        if (count < 5)
+        {
+            cellsToBeCrossedOut.Clear();
+            return false;
+        }
+
+        cellsToBeCrossedOut.Add(move);
+        foreach (var (crossOutX, crossOutY, _) in cellsToBeCrossedOut)
+            game.Board[(crossOutX, crossOutY)].CrossedOut = true;
+
+        return true;
     }
 
-    private static bool IsValidPosition(int x, int y) => x >= 0 && y >= 0 && x < MaxX && y < MaxY;
+    private static bool IsValidPosition((int X, int Y) p) => p.X >= 0 && p.Y >= 0 && p.X < MaxX && p.Y < MaxY;
 }

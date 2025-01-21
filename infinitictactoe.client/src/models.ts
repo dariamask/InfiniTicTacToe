@@ -75,6 +75,29 @@ export class EndMessage extends TypedMessage {
   }
 }
 
+/* Example:
+{
+    "success": true,
+    "message": "Move accepted.",
+    "x": 10,
+    "y": 22,
+    "scoreX": 1,
+    "scoreO": 1,
+    "crossedOutCells": [
+        {
+            "x": 11,
+            "y": 22,
+            "side": "o",
+            "turnNumber": null,
+            "crossedOut": true,
+            "symbol": "O"
+        },
+        
+    ],
+    "yourTurn": true,
+    "type": "moveResult"
+}
+ */
 export class MoveResultMessage extends TypedMessage {
   success: boolean;
   message: string;
@@ -83,6 +106,7 @@ export class MoveResultMessage extends TypedMessage {
   scoreX: number;
   scoreO: number;
   yourTurn: boolean;
+  crossedOutCells: CrossedOutCell[];
 
   constructor(
     success: boolean,
@@ -91,6 +115,7 @@ export class MoveResultMessage extends TypedMessage {
     y: number,
     scoreX: number,
     scoreO: number,
+    crossedOutCells: CrossedOutCell[],
     yourTurn: boolean
   ) {
     super(MessageType.MoveResult);
@@ -100,6 +125,32 @@ export class MoveResultMessage extends TypedMessage {
     this.y = y;
     this.scoreX = scoreX;
     this.scoreO = scoreO;
+    this.crossedOutCells = crossedOutCells;
     this.yourTurn = yourTurn;
+  }
+}
+
+export class CrossedOutCell {
+  x: number;
+  y: number;
+  side: PlayerSide;
+  turnNumber: number | null;
+  crossedOut: boolean;
+  symbol: string;
+
+  constructor(
+    x: number,
+    y: number,
+    side: PlayerSide,
+    turnNumber: number | null,
+    crossedOut: boolean,
+    symbol: string
+  ) {
+    this.x = x;
+    this.y = y;
+    this.side = side;
+    this.turnNumber = turnNumber;
+    this.crossedOut = crossedOut;
+    this.symbol = symbol;
   }
 }

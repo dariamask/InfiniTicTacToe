@@ -1,18 +1,21 @@
 import { Component, Input } from '@angular/core';
 import { WebSocketService } from '../web-socket.service';
-import { MoveMessage, PlayerSide } from '../models';
+import { MoveMessage } from '../models';
+import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-cell',
   templateUrl: './cell.component.html',
-  styleUrls: ['./cell.component.css']
+  styleUrls: ['./cell.component.css'],
+  imports: [CommonModule],
 })
 export class CellComponent {
   @Input() value: string = '';
   @Input() row: number = 0;
   @Input() col: number = 0;
+  @Input() isLastMove: boolean = false;
+  @Input() isCrossedOut: boolean = false;
   @Input() yourTurn: boolean = false;
-  @Input() playerSide: PlayerSide | undefined;
 
   constructor(private webSocketService: WebSocketService) { }
 
