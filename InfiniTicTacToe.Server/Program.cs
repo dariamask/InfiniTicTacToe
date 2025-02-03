@@ -8,14 +8,20 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddSingleton<IWebSocketConnectionManager, WebSocketConnectionManager>();
-builder.Services.AddSingleton<GameService>();
+builder.Services.AddSingleton<IncomingMessageDispatcher>();
+builder.Services.AddSingleton<GameStorage>();
+
+builder.Services.AddScoped<GameService>();
+builder.Services.AddScoped<MoveProcessor>();
 
 builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-_ = app.Services.GetRequiredService<GameService>();
+// ensure subscriptions are performed
+_ = app.Services.GetRequiredService<IncomingMessageDispatcher>();
 
 app.UseDefaultFiles();
 app.UseStaticFiles();

@@ -1,27 +1,37 @@
 using System.Diagnostics;
-using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
+using InfiniTicTacToe.Server.Models;
 using InfiniTicTacToe.Server.Services;
 
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 using Moq;
 
 namespace InfiniTicTacToe.Tests;
 
-[SuppressMessage("Style", "IDE0037:Use inferred member name", Justification = "Explicit names for members of anonymous types")]
-public class GameServiceTests
+public sealed class GameServiceTests : IDisposable
 {
     private const string Player1Id = "player1";
     private const string Player2Id = "player2";
 
-    private readonly Mock<IWebSocketConnectionManager> _webSocketManagerMock;
+    private readonly Mock<IWebSocketConnectionManager> _webSocketManagerMock = new();
+    private readonly IServiceCollection _services = new ServiceCollection();
+    private readonly ServiceProvider _serviceProvider;
 
     public GameServiceTests()
     {
-        _webSocketManagerMock = new Mock<IWebSocketConnectionManager>();
-        _ = new GameService(_webSocketManagerMock.Object, new Mock<ILogger<GameService>>().Object);
+        _services.AddSingleton(_webSocketManagerMock.Object);
+        _services.AddSingleton<IncomingMessageDispatcher>();
+        _services.AddSingleton<GameStorage>();
+
+        _services.AddScoped<GameService>();
+        _services.AddScoped<MoveProcessor>();
+
+        _services.AddLogging();
+
+        _serviceProvider = _services.BuildServiceProvider();
+        _ = _serviceProvider.GetRequiredService<IncomingMessageDispatcher>();
     }
 
     [Fact]
@@ -321,6 +331,11 @@ public class GameServiceTests
         _webSocketManagerMock.Verify(m => m.SendMessageAsync(Player2Id, It.Is<object>(msg => VerifyMoveMessage(msg, true, "Move accepted.", 5, 5, 1, 0))), Times.Once);
     }
 
+    public void Dispose()
+    {
+        _serviceProvider.Dispose();
+    }
+
     private async Task JoinGame()
     {
         _webSocketManagerMock.WebsocketOpened(Player1Id);
@@ -397,9 +412,7 @@ public class GameServiceTests
 
 internal static class SocketManagerExtensions
 {
-    // Mock<IWebSocketConnectionManager>
-
-    private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web);
 
     public static void WebsocketOpened(this Mock<IWebSocketConnectionManager> mock, string id)
     {
@@ -408,7 +421,7 @@ internal static class SocketManagerExtensions
 
     public static void MessageSent<T>(this Mock<IWebSocketConnectionManager> mock, string id, T message)
     {
-        var messageJson = JsonSerializer.Serialize(message, _options);
+        var messageJson = JsonSerializer.Serialize(message, Options);
         mock.Raise(m => m.MessageReceived += null, new object(), new WebsocketMessageEventArgs(messageJson, id));
     }
 }
