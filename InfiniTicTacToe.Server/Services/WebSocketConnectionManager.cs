@@ -43,7 +43,6 @@ public class WebSocketConnectionManager(ILogger<WebSocketConnectionManager> logg
     {
         AddSocket(id, socket);
 
-        // добавить промежуточный слой, который будет заниматься деспетчеризацией. В зависимости от какого сообщения какую логику мы вызываем.
         var buffer = new byte[1024 * 4];
         while (socket.State == WebSocketState.Open && !cancellationToken.IsCancellationRequested)
         {
