@@ -15,57 +15,55 @@ namespace InfiniTicTacToe.Server.Services
 
         public async Task InvokeAsync(HttpContext context)
         {
-            if (context.Request.Path == "/ws")
-            {
-                if (context.WebSockets.IsWebSocketRequest)
-                {
-                    var cancellationToken = context.RequestAborted;
-                    string? socketId = null;
-                    try
-                    {
-                        var webSocket = await context.WebSockets.AcceptWebSocketAsync();
-                        var socketFinishedTcs = new TaskCompletionSource<object>();
-
-                        var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketConnectionManager>();
-                        socketId = Guid.NewGuid().ToString();
-                        webSocketManager.AddSocket(socketId, webSocket);
-                        await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, socketFinishedTcs, cancellationToken);
-                        await socketFinishedTcs.Task;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        _logger.LogInformation("WebSocket connection was canceled.");
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error handling WebSocket connection.");
-                        context.Response.StatusCode = 500;
-                        await context.Response.WriteAsync("Internal Server Error.");
-                    }
-                    finally
-                    {
-                        if (context.WebSockets.IsWebSocketRequest && socketId != null)
-                        {
-                            var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketConnectionManager>();
-                            var webSocket = webSocketManager.GetSocketById(socketId);
-
-                            if (webSocket != null && webSocket.State == WebSocketState.Open)
-                            {
-                                await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", cancellationToken);
-                            }
-
-                            await webSocketManager.RemoveSocket(socketId, cancellationToken);
-                        }
-                    }
-                }
-                else
-                {
-                    context.Response.StatusCode = 400;
-                }
-            }
-            else
+            if (context.Request.Path != "/ws")
             {
                 await _next(context);
+                return;
+            }
+
+            if (!context.WebSockets.IsWebSocketRequest)
+            {
+                context.Response.StatusCode = 400;
+                return;
+            }
+
+            var cancellationToken = context.RequestAborted;
+            string? socketId = null;
+            try
+            {
+                var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+                var socketFinishedTcs = new TaskCompletionSource<object>();
+
+                var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketConnectionManager>();
+                socketId = Guid.NewGuid().ToString();
+                webSocketManager.AddSocket(socketId, webSocket);
+                await webSocketManager.ReceiveMessagesAsync(socketId, webSocket, socketFinishedTcs, cancellationToken);
+                await socketFinishedTcs.Task;
+            }
+            catch (OperationCanceledException)
+            {
+                _logger.LogInformation("WebSocket connection was canceled.");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error handling WebSocket connection.");
+                context.Response.StatusCode = 500;
+                await context.Response.WriteAsync("Internal Server Error.");
+            }
+            finally
+            {
+                if (socketId != null)
+                {
+                    var webSocketManager = context.RequestServices.GetRequiredService<IWebSocketConnectionManager>();
+                    var webSocket = webSocketManager.GetSocketById(socketId);
+
+                    if (webSocket != null && webSocket.State == WebSocketState.Open)
+                    {
+                        await webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", cancellationToken);
+                    }
+
+                    await webSocketManager.RemoveSocket(socketId, cancellationToken);
+                }
             }
         }
     }
