@@ -43,6 +43,7 @@ namespace InfiniTicTacToe.Tests
 
             // Act
             var websocket = await webSocketClient.ConnectAsync(wsUri, CancellationToken.None);
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Assert
             Assert.Equal(WebSocketState.Open, websocket.State);
@@ -106,6 +107,8 @@ namespace InfiniTicTacToe.Tests
 
             // Act
             await webSocketClient.ConnectAsync(wsUri, CancellationToken.None);
+
+            await Task.Delay(TimeSpan.FromSeconds(2));
 
             // Assert
             loggerMock.Verify(
