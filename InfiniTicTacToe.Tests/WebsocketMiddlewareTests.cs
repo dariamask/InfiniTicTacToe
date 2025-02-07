@@ -33,13 +33,20 @@ namespace InfiniTicTacToe.Tests
                     app.UseMiddleware<WebSocketMiddleware>();
                 }));
 
-            // Act
             var webSocketClient = testServer.CreateWebSocketClient();
-            var websocket = await webSocketClient.ConnectAsync(new Uri("ws://localhost/ws"), CancellationToken.None);
+
+            var wsUri = new UriBuilder(testServer.BaseAddress)
+            {
+                Scheme = "ws",
+                Path = "ws",
+            }.Uri;
+
+            // Act
+            var websocket = await webSocketClient.ConnectAsync(wsUri, CancellationToken.None);
 
             // Assert
-            webSocketManagerMock.Verify(m => m.AddSocket(It.IsAny<string>(), It.IsAny<WebSocket>()), Times.Once);
             Assert.Equal(WebSocketState.Open, websocket.State);
+            webSocketManagerMock.Verify(m => m.AddSocket(It.IsAny<string>(), It.IsAny<WebSocket>()), Times.Once);
         }
 
         [Fact]
@@ -89,9 +96,16 @@ namespace InfiniTicTacToe.Tests
                     app.UseMiddleware<WebSocketMiddleware>();
                 }));
 
-            // Act
             var webSocketClient = testServer.CreateWebSocketClient();
-            await webSocketClient.ConnectAsync(new Uri("ws://localhost/ws"), CancellationToken.None);
+
+            var wsUri = new UriBuilder(testServer.BaseAddress)
+            {
+                Scheme = "ws",
+                Path = "ws",
+            }.Uri;
+
+            // Act
+            await webSocketClient.ConnectAsync(wsUri, CancellationToken.None);
 
             // Assert
             loggerMock.Verify(
