@@ -87,7 +87,7 @@ public sealed class GameService(
 
         var moveMessageResult = new MoveResultMessage(
             Success: moveResult.IsAccepted,
-            Message: moveResult.ErrorMessage,
+            Message: moveResult.Message,
             X: moveMessage.X,
             Y: moveMessage.Y,
             ScoreX: game.ScoreX,

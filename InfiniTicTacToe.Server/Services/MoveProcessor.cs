@@ -2,7 +2,13 @@ using InfiniTicTacToe.Server.Models;
 
 namespace InfiniTicTacToe.Server.Services;
 
-public sealed record MoveResult(bool IsAccepted, bool IsWin, IReadOnlyCollection<Cell> CrossedOutCells, string ErrorMessage);
+public sealed record MoveResult(bool IsAccepted, bool IsWin, IReadOnlyCollection<Cell> CrossedOutCells, string Message)
+{
+    public static MoveResult Success(bool isWin, IReadOnlyCollection<Cell> crossedOutCells, string message) =>
+        new(true, isWin, crossedOutCells, message);
+
+    public static MoveResult Fail(string message) => new(false, false, [], message);
+}
 
 public sealed class MoveProcessor(ILogger<MoveProcessor> logger)
 {
@@ -14,13 +20,13 @@ public sealed class MoveProcessor(ILogger<MoveProcessor> logger)
     public MoveResult MakeMove(Game game, Player player, int x, int y)
     {
         if (game.Status != GameStatus.InProgress)
-            return new(false, false, [], "Game is not in progress.");
+            return MoveResult.Fail("Game is not in progress.");
 
         if (!IsPlayerTurn(game, player.Id))
-            return new(false, false, [], "It's not your turn.");
+            return MoveResult.Fail("It's not your turn.");
 
         if (!IsValidPosition((x, y)))
-            return new(false, false, [], "Move out of bounds.");
+            return MoveResult.Fail("Move out of bounds.");
 
         var playerSide = player.Side ?? throw new InvalidOperationException("Player side is not set.");
 
@@ -28,7 +34,7 @@ public sealed class MoveProcessor(ILogger<MoveProcessor> logger)
         var moveSuccess = game.Board.TryAdd((x, y), move);
 
         if (!moveSuccess)
-            return new(false, false, [], "Position already used.");
+            return MoveResult.Fail("Position already used.");
 
         var (isWin, crossedOutCells) = CheckWin(game, move, playerSide);
         if (isWin)
@@ -47,7 +53,7 @@ public sealed class MoveProcessor(ILogger<MoveProcessor> logger)
         }
 
         logger.LogInformation("Move accepted: isWin = {IsWin}, number of crossed cells = {CrossedOutCells}", isWin, crossedOutCells.Count);
-        return new(true, isWin, crossedOutCells, "Move accepted.");
+        return MoveResult.Success(isWin, crossedOutCells, "Move accepted.");
     }
 
     private static bool CheckDirection(Game game, Cell move, Side side, int dx, int dy, out List<Cell> cellsToBeCrossedOut)

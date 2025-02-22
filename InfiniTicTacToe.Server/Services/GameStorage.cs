@@ -6,12 +6,9 @@ namespace InfiniTicTacToe.Server.Services;
 
 public sealed class GameStorage
 {
-    private readonly ConcurrentDictionary<string, Game> _games = new();
-    private readonly ConcurrentDictionary<string, Player> _players = new();
+    public ConcurrentDictionary<string, Game> Games { get; } = new();
 
-    public ConcurrentDictionary<string, Game> Games => _games;
-
-    public ConcurrentDictionary<string, Player> Players => _players;
+    public ConcurrentDictionary<string, Player> Players { get; } = new();
 
     public GameStatistics GetStats()
     {
