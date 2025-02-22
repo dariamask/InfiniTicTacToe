@@ -1,4 +1,4 @@
-namespace InfiniTicTacToe.Server.Services;
+namespace InfiniTicTacToe.Server.Models;
 
 public sealed record TypedMessage(MessageType Type);
 
